@@ -1,0 +1,12 @@
+.env
+/.venv
+/__pycache__
+/models
+/data
+/old_code
+saved_index
+first_try
+*.json
+vector_store
+*.csv
+*.log
