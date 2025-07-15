@@ -52,25 +52,6 @@ Here is the step-by-step flow for a document that fails processing:
 
 -----
 
-## Prerequisites
-
-Before running this pipeline, ensure the following services are installed and running:
-
-1.  **Python 3.9+**
-2.  **Unoserver:** Required for converting Word documents to PDF. It can be run via Docker:
-    ```bash
-    docker run -d --rm -p 2002:2002 unoserver/unoserver --port 2002
-    ```
-3.  **Ollama:** For serving the LLMs locally.
-      * Install [Ollama](https://ollama.com/).
-      * Pull the required models:
-        ```bash
-        ollama pull mistralai/Mistral-Small-3.2-24B-Instruct-2506
-        ollama pull ibm-granite/granite-3.3-8b-instruct
-        ```
-
------
-
 ## 📂 Project Structure
 
 The project is organized to separate different logical components:
@@ -117,6 +98,21 @@ document-embedding-pipeline/
 
 ## 🚀 Getting Started
 
+### 0\. Prerequisites
+
+Before running this pipeline, ensure the following services are installed and running:
+
+1.  **Python 3.9+**
+2.  **Ollama:** For serving the LLMs locally.
+      * Install [Ollama](https://ollama.com/).
+      * Pull the required models:
+        ```bash
+        ollama pull mistralai/Mistral-Small-3.2-24B-Instruct-2506
+        ollama pull ibm-granite/granite-3.3-8b-instruct
+        ```
+
+-----
+
 ### 1\. Installation
 
 Clone the repository and install the required Python packages:
@@ -125,6 +121,79 @@ Clone the repository and install the required Python packages:
 git clone <your-repository-url>
 cd document-embedding-pipeline
 pip install -r requirements.txt
+```
+
+#### 1\.1\. Installing unoserver and running it
+# Document Embedding Pipeline
+
+This repository contains the code for the Document Embedding Pipeline.
+
+## Unoserver Service Setup
+
+The `unoserver` service is crucial for converting various document formats (like `.docx`, `.odt`, `.pptx`) into plain text, which is then processed by the embedding pipeline. `unoserver` leverages LibreOffice in headless mode for these conversions.
+
+This guide outlines how to set up `unoserver` to work with your Python virtual environment by sharing system-wide LibreOffice Python packages.
+
+### Prerequisites
+
+* **LibreOffice:** Ensure LibreOffice is installed on your system.
+    * **Linux (Debian/Ubuntu):**
+        ```bash
+        sudo apt update
+        sudo apt install libreoffice
+        ```
+    * **macOS (using Homebrew):**
+        ```bash
+        brew install --cask libreoffice
+        ```
+    * **Windows:** Download and install LibreOffice from the official website: [https://www.libreoffice.org/download/libreoffice/](https://www.libreoffice.org/download/libreoffice/)
+
+### Installation and Setup with Virtual Environment
+
+To allow your virtual environment to access the necessary LibreOffice Python bindings (`uno` module), you need to ensure the system-wide LibreOffice Python packages are installed and that your virtual environment is created with access to them.
+
+1.  **Install LibreOffice Python Script Provider (Linux Only):**
+    On Linux systems, you typically need to install a package that provides the Python bindings for LibreOffice (`python3-uno`).
+
+    ```bash
+    sudo apt update
+    sudo apt install libreoffice-script-provider-python
+    ```
+    *Note: If you are on a different Linux distribution, the package name might vary (e.g., `python-uno` or `libreoffice-python-support`).*
+
+2.  **Recreate your Virtual Environment with System Site Packages:**
+    This step is crucial. You must create (or recreate) your virtual environment with the `--system-site-packages` flag. This flag allows the virtual environment to access packages installed globally on your system, including the `uno` module provided by LibreOffice.
+
+    * **Deactivate your current virtual environment (if active):**
+        ```bash
+        deactivate
+        ```
+    * **Remove your existing virtual environment (optional, but recommended for a clean setup):**
+        ```bash
+        rm -rf .venv
+        ```
+    * **Create a new virtual environment with system site packages:**
+        ```bash
+        python3 -m venv .venv --system-site-packages
+        ```
+    * **Activate the new virtual environment:**
+        ```bash
+        source .venv/bin/activate
+        ```
+
+3.  **Install `unoserver` into your Virtual Environment:**
+    Now that your virtual environment can access system-wide packages, you can install `unoserver` using `pip`.
+
+    ```bash
+    pip install unoserver
+    ```
+
+### Running the Unoserver Service
+
+Once `unoserver` is installed within your virtual environment (which has access to the `uno` module), you can start the service:
+
+```bash
+unoserver
 ```
 
 ### 2\. Configuration
