@@ -1,0 +1,63 @@
+# -----------------------------------------------------------------------------
+# Configuration for the Document Processing Pipeline
+# -----------------------------------------------------------------------------
+
+# --- Paths and Directories ---
+paths:
+  # Path to the local embedding model directory, as specified in the spec.
+  embedding_model_dir: "models/qwen3-embed-0.6b"
+  # Name of the temporary folder for intermediate processing files.
+  temp_dir_name: "_temp"
+  # Name of the folder to store documents that failed processing permanently.
+  failed_dir_name: "_failed"
+  # Path for the file-based Qdrant database.
+  qdrant_db_path: "local_qdrant_db"
+  # Log file name.
+  log_file: "pipeline.log"
+
+# --- LLM and Tokenizer Configuration ---
+llm:
+  # The base URL for the local Ollama server.
+  ollama_base_url: "http://localhost:11434/v1"
+  # Specific model assignments for different tasks to ensure the correct model is used.
+  models:
+    # Used for title/structure extraction on small documents and section summaries.
+    primary_model: "mistralai/Mistral-Small-3.2-24B-Instruct-2506"
+    # Used for title extraction on large documents and table summaries.
+    secondary_model: "ibm-granite/granite-3.3-8b-instruct"
+    # Used for Excel content classification, schema generation, and summarization.
+    excel_model: "mistralai/Mistral-Small-3.2-24B-Instruct-2506"
+  # The tokenizer used for calculating token counts to differentiate document sizes.
+  tokenizer_model: "mistralai/Mistral-Small-3.2-24B-Instruct-2506"
+  # Global token limit for any input sent to an LLM.
+  max_input_tokens: 10000
+
+# --- Vector Database Configuration (Qdrant) ---
+qdrant:
+  collection_name: "engineering_document_embeddings"
+  vector_size: 1024
+  distance_metric: "Cosine" # As specified: Cosine similarity.
+
+# --- Processing Parameters ---
+processing_params:
+  # Maximum number of processing attempts before a document is marked as failed.
+  max_retries: 2
+  # Word document specific parameters.
+  word:
+    # Token count threshold to distinguish between 'small' and 'large' documents.
+    small_doc_threshold_tokens: 5000
+  # Excel document specific parameters.
+  excel:
+    # A sheet is considered empty if its empty cell ratio exceeds this value.
+    empty_sheet_threshold: 0.80
+    # Columns with a NaN value ratio higher than this will be dropped.
+    nan_column_threshold: 0.90
+    # For large tables, only the first N rows are sent to the LLM for analysis.
+    table_truncation_rows: 100
+
+# --- External Services Configuration ---
+services:
+  # Configuration for the unoserver instance used for DOC -> PDF conversion.
+  unoserver:
+    host: "localhost"
+    port: 2002
