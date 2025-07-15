@@ -1,0 +1,16 @@
+# pyproject.toml
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "document-embedding-pipeline"
+version = "0.1.0"
+description = "A pipeline to process documents and generate datasets for finetuning embedding models."
+requires-python = ">=3.9"
+
+[tool.setuptools]
+# This tells setuptools to look for Python packages inside the 'src' directory
+package-dir = {"" = "src"}
+packages = ["utils", "pipeline", "services"]

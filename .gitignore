@@ -12,3 +12,5 @@ vector_store
 *.log
 */__pycache__
 */*/__pycache__
+*/*/*/__pycache__
+document_embedding_pipeline/src/document_embedding_pipeline.egg-info
