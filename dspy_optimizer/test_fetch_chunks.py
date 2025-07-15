@@ -48,7 +48,7 @@ def test_environment(tmp_path_factory):
         models.PointStruct(
             id=str(uuid.uuid4()),
             vector=[random.random() for _ in range(4)],
-            payload={"text": f"This is test chunk number {i}."},
+            payload={"_node_content" : '{"text": "This is test chunk number."}'},
         )
         for i in range(NUM_TEST_DOCS)
     ]
