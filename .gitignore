@@ -10,3 +10,5 @@ first_try
 vector_store
 *.csv
 *.log
+*/__pycache__
+*/*/__pycache__
