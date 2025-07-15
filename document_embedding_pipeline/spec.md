@@ -309,6 +309,8 @@ This pipeline handles Excel (`.xlsx`, `.xls`) files.
 
   * **LLM Serving:** Ollama server run locally.
 
+  * **LLM Serving:** Testing with `unittest`
+
   * **Network Configuration:** To bypass potential network restrictions, Ollama API calls must be routed through a local proxy using `httpx`, as shown in the example below.
 
     ```python
