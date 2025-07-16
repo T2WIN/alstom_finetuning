@@ -69,6 +69,7 @@ document-embedding-pipeline/
 ├── src/
 │   ├── __init__.py
 │   ├── data_models.py
+│   ├── prompts.py
 │   ├── pipeline/
 │   │   ├── __init__.py
 │   │   ├── base_processor.py
@@ -76,6 +77,7 @@ document-embedding-pipeline/
 │   │   └── excel_processor.py
 │   ├── services/
 │   │   ├── __init__.py
+│   │   ├── docling_service.py
 │   │   ├── llm_service.py
 │   │   ├── qdrant_service.py
 │   │   └── unoserver_service.py
@@ -91,7 +93,12 @@ document-embedding-pipeline/
     │   └── test_logging_setup.py
     └── test_pipeline/
         ├── __init__.py
-        └── test_pipeline.py
+        └── test_accept_changes.py
+    └── test_services/
+        ├── __init__.py
+        ├── test_llm_service.py
+        ├── test_qdrant_service.py
+        ├── test_unoserver_service.py
 ```
 
 -----

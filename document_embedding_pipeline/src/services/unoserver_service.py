@@ -4,7 +4,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def convert_document(input_path: Path, output_path: Path):
+def convert_document_to_pdf(input_path: Path, output_path: Path):
     """Converts a document to a specified format using unoconverter."""
     try:
         subprocess.run(
