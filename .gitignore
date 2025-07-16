@@ -12,3 +12,7 @@ vector_store
 __pycache__
 document_embedding_pipeline/src/document_embedding_pipeline.egg-info
 qdrant_db
+*.doc*
+*.pdf
+*.xls
+*.xslx
