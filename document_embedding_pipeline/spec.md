@@ -120,6 +120,8 @@ The processed data is stored in a Qdrant vector database.
 
       "title": "The Extracted Document Title",
 
+      "global summary" : "This is a summary",
+
       "section_list": [
 
         {
