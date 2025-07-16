@@ -1,8 +1,7 @@
 .env
-/.venv
-/__pycache__
-/models
-/data
+.venv
+models
+data
 /old_code
 saved_index
 first_try
@@ -10,7 +9,6 @@ first_try
 vector_store
 *.csv
 *.log
-*/__pycache__
-*/*/__pycache__
-*/*/*/__pycache__
+__pycache__
 document_embedding_pipeline/src/document_embedding_pipeline.egg-info
+qdrant_db
