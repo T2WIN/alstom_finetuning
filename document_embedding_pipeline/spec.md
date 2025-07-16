@@ -28,7 +28,7 @@ This pipeline handles Microsoft Word (`.docx`, `.doc`) files.
 #### **2.1. Initial Parsing and Pre-processing**
 
 
-1.  **Accept Changes:** Programmatically accept all tracked changes in the original `.docx` file.
+1.  **Accept Changes:** Programmatically accept all tracked changes in the original `.docx` file. (During implementation, this was found very difficult so it is reported to a future version)
 
 2.  **PDF Conversion:** Convert the finalized `.docx` document into a PDF file using a `unoserver` instance. **The script will check for a running `unoserver` instance on startup and will exit with an error if it is not available.** All subsequent steps will operate on this generated PDF.
 
