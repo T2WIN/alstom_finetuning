@@ -1,0 +1,85 @@
+commit fbb631b7608418279cf1f4cf8f4f31a8d617ebbd
+Author: T2WIN <grandclaye49@gmail.com>
+Date:   Tue Jul 15 23:31:47 2025 +0200
+
+    docs: Added a prompt for Gemini and updated spec.
+    
+    Test lib name added to spec to allow llms to remain consistent when writing code.
+    Added prompt for Gemini to use the documentation loaded from Github.
+
+commit 430028ac20f42c73c27db4a37811f55840e3c96e
+Author: T2WIN <grandclaye49@gmail.com>
+Date:   Tue Jul 15 23:29:37 2025 +0200
+
+    docs: Verified my unoserver installation and added documentation for it.
+    
+    The ability to run convert with just a simple function like in test_unoserver.py suggests a needed refactor of the project structure.
+    Maybe it belongs more as function in a utils file.
+
+commit 5d2ad7feca7553d119e31f803df426967c0cbb76
+Author: T2WIN <grandclaye49@gmail.com>
+Date:   Tue Jul 15 22:03:59 2025 +0200
+
+    chore : Finish the project setup
+    
+    This commit creates pyproject.toml and installs in editable mode.
+    It also adds a simple script to test the logging_setup.py file.
+
+commit 29a7abd33f5c987e18985f0133554cdc4adb4968
+Author: T2WIN <grandclaye49@gmail.com>
+Date:   Tue Jul 15 21:29:25 2025 +0200
+
+    chore: Updates the gitignore to ignore __pycache__
+
+commit 64321b34a6ff7a8d75e99bcbcbd17ba7c3696044
+Author: T2WIN <grandclaye49@gmail.com>
+Date:   Tue Jul 15 21:27:50 2025 +0200
+
+    feat(core): Move files to folders for better project structure
+    
+    This commit moves files for each part of the project into their own folder for better separation of concerns.
+
+commit d9ddeda88c478d3f6902298d3067ee449973fef1
+Author: T2WIN <grandclaye49@gmail.com>
+Date:   Tue Jul 15 21:24:56 2025 +0200
+
+    feat(core): Initialise project structure and core utilities
+    
+    This commit establishes the foundational structure for the document processing pipeline. It includes the initial setup for the main application, configuration, logging, and testing, laying the groundwork for all future development.
+    
+    Key additions include:
+    
+    - **Project Layout:** Creates the primary directories (`src`, `tests`, `models`) to separate application logic, testing, and machine learning models.
+    
+    - **README Documentation:** Adds a `README.md` file outlining the project's goals, features, prerequisites, and usage instructions.
+    
+    - **Centralized Logging:** Implements a `logging_setup.py` module to provide consistent, configurable logging to both the console and a file. This is crucial for monitoring and debugging the pipeline.
+    
+    - **Testing Framework:** Establishes a `tests/` directory with a mirrored structure to `src/`, preparing the project for unit and integration testing with frameworks like pytest.
+
+commit c04f3332229b2c3d75d925a105baef99c4e38f1e
+Author: T2WIN <grandclaye49@gmail.com>
+Date:   Mon Jul 14 00:08:01 2025 +0200
+
+    Building a DSPy pipeline for the generation to optimize the prompts.
+    
+    This commit contains the fetching of chunks from the existing filtered chunks.
+    It is tested.
+    
+    Also with it, comes some prompts used to generate the code with Gemini.
+    There is the prompt to generate the plan,
+    the prompt that integrates the plan (modified to add clarity on certain points)
+    and the prompt that gives further instruction to execute step 1.2
+
+commit d2fa2bb7e591930f5fff856c1d161882f5a20a29
+Author: T2WIN <grandclaye49@gmail.com>
+Date:   Sun Jul 13 21:51:18 2025 +0200
+
+    First commit
+    
+    Adding parsing system for pdf files into qdrant filesystem db.
+    Parsing also has a quality filter to prevent very bad chunks from entering the db.
+    Very bad chunks are chunks that are very hard to use for query generation. For instance, what can you on a chunk that just contains "123" ?
+    
+    Adding synthetic query generation via free APIs. Added round robin to use APIs uniformly.
+    Also uses a rate limiting system and a backoff system in case rate limits are hit nonetheless or any other error happens across many calls.
