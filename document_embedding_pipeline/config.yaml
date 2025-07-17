@@ -20,7 +20,7 @@ paths:
 # --- LLM and Tokenizer Configuration ---
 llm:
   # The base URL for the local Ollama server.
-  ollama_base_url: "http://127.0.0.1:8080"
+  ollama_base_url: "http://127.0.0.1:11434"
   # Specific model assignments for different tasks to ensure the correct model is used.
   models:
     # Used for title/structure extraction on small documents and section summaries.

@@ -81,24 +81,26 @@ document-embedding-pipeline/
 │   │   ├── llm_service.py
 │   │   ├── qdrant_service.py
 │   │   └── unoserver_service.py
-│   └── utils/
-│       ├── __init__.py
-│       ├── file_handler.py
-│       ├── logging_setup.py
-│       └── state_manager.py
-└── tests/
-    ├── __init__.py
-    ├── test_utils/
-    │   ├── __init__.py
-    │   └── test_logging_setup.py
-    └── test_pipeline/
+│   ├── utils/
+│   │   ├── __init__.py
+│   │   ├── logging_setup.py
+│   │   ├── state_manager.py # Not used yet
+│   │   ├── config_loader.py
+│   ├── scripts/
+│   │   ├── walk_word_pipeline.py
+└── └── tests/
         ├── __init__.py
-        └── test_accept_changes.py
-    └── test_services/
-        ├── __init__.py
-        ├── test_llm_service.py
-        ├── test_qdrant_service.py
-        ├── test_unoserver_service.py
+        ├── test_utils/
+        │   ├── __init__.py
+        │   └── test_logging_setup.py
+        ├── test_pipeline/
+        |   ├── __init__.py
+        |   └── test_accept_changes.py
+        └── test_services/
+            ├── __init__.py
+            ├── test_llm_service.py
+            ├── test_qdrant_service.py
+            ├── test_unoserver_service.py
 ```
 
 -----
