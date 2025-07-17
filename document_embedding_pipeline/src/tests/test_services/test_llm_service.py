@@ -22,7 +22,7 @@ test_prompt = "Extract the user info for a 34-year-old software engineer named J
 
 # 4. The model to use for the test.
 #    You can change this to any model available on your Ollama server.
-test_model = "qwen3:4b"
+test_model = "Qwen3-14B-Q5_K_M.gguf"
 
 logger.info("--- Starting LLMService Test ---")
 logger.info(f"Using model: {test_model}")

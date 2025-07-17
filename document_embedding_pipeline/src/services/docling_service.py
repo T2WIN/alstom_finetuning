@@ -1,10 +1,12 @@
-# src/services/docling_service.py
+# Update src/services/docling_service.py
 
 import logging
 from pathlib import Path
 from docling.document_converter import DocumentConverter, PdfFormatOption
 from docling.datamodel.base_models import InputFormat
 from docling.datamodel.pipeline_options import PdfPipelineOptions
+from utils.config_loader import ConfigLoader
+from data_models import HierarchicalNode
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -15,7 +17,9 @@ class DoclingService:
     """
 
     def __init__(self):
-        pipeline_options = PdfPipelineOptions(artifacts_path="/home/grand/Finetuning/models")
+        artifacts_path = ConfigLoader.get('paths.artifacts_path')
+        pipeline_options = PdfPipelineOptions(artifacts_path=artifacts_path)
+        pipeline_options = PdfPipelineOptions()
         self.converter = DocumentConverter(
             format_options={
                 InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)
@@ -45,6 +49,6 @@ class DoclingService:
             logger.info(f"Successfully converted PDF to Markdown: {markdown_path}")
 
         except Exception as e:
-            logger.error(f"Failed to convert PDF '{pdf_path}' to Markdown. Reason: {e}")
+            logger.error(f"Failed to convert PDF '{pdf_path}' to Markdown. Reason: {e}", exc_info=True)
             # The exception is allowed to propagate up to be handled by the main orchestrator.
             raise
