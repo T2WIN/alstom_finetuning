@@ -1,20 +1,25 @@
-# src/services/llm_service.py
+# Update src/services/llm_service.py to use config values
 
 import logging
 from typing import Type, TypeVar
-
 import httpx
 import instructor
 from openai import OpenAI, OpenAIError
 from pydantic import BaseModel
-from transformers import AutoTokenizer, PreTrainedTokenizer, AutoProcessor, PixtralProcessor
-from mistral_common.tokens.tokenizers.mistral import MistralTokenizer
+from transformers import AutoTokenizer, PreTrainedTokenizer
+from utils.config_loader import ConfigLoader
 
-# As per spec.md, the proxy URL for the local Ollama server.
-OLLAMA_BASE_URL = "http://localhost:11434"
-# The model used for token counting and the truncation limit.
-TOKENIZER_MODEL = "unsloth/Mistral-Small-3.2-24B-Instruct-2506"
-MAX_TOKENS = 10000
+# Configure logging
+logger = logging.getLogger(__name__)
+
+# Load configuration
+OLLAMA_BASE_URL = ConfigLoader.get('llm.ollama_base_url')
+TOKENIZER_MODEL = ConfigLoader.get('llm.tokenizer_model')
+MAX_TOKENS = ConfigLoader.get('llm.max_input_tokens')
+
+PydanticModel = TypeVar("PydanticModel", bound=BaseModel)
+
+# Rest of LLMService remains the same, but now uses config values
 
 # --- Setup ---
 logger = logging.getLogger(__name__)
@@ -44,9 +49,10 @@ class LLMService:
         try:
             # As specified in spec.md, all requests must be routed through a
             # local proxy. httpx.Client is used for this purpose.
-            http_client = httpx.Client(
-                proxy=OLLAMA_BASE_URL
-            )
+            # Note this doesn't work with llama server !!!!!!!!!!!
+            # http_client = httpx.Client(
+            #     proxy=OLLAMA_BASE_URL
+            # )
 
             # The OpenAI client is configured to point to the local Ollama v1 API
             # endpoint. `instructor.patch` enhances this client to handle
@@ -55,7 +61,7 @@ class LLMService:
                 OpenAI(
                     base_url=f"{OLLAMA_BASE_URL}/v1",
                     api_key="ollama",  # Required by the API, but can be any string for Ollama
-                    http_client=http_client,
+                    # http_client=http_client,
                 ),
                 mode=instructor.Mode.JSON,
             )

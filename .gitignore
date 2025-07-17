@@ -16,3 +16,4 @@ qdrant_db
 *.pdf
 *.xls
 *.xslx
+commit_history.txt

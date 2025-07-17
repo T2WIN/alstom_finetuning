@@ -6,6 +6,8 @@
 paths:
   # Path to the local embedding model directory, as specified in the spec.
   embedding_model_dir: "models/qwen3-embed-0.6b"
+  #Path to the docling models
+  artifacts_path : "models"
   # Name of the temporary folder for intermediate processing files.
   temp_dir_name: "_temp"
   # Name of the folder to store documents that failed processing permanently.
@@ -18,7 +20,7 @@ paths:
 # --- LLM and Tokenizer Configuration ---
 llm:
   # The base URL for the local Ollama server.
-  ollama_base_url: "http://localhost:11434/v1"
+  ollama_base_url: "http://127.0.0.1:8080"
   # Specific model assignments for different tasks to ensure the correct model is used.
   models:
     # Used for title/structure extraction on small documents and section summaries.
@@ -28,7 +30,7 @@ llm:
     # Used for Excel content classification, schema generation, and summarization.
     excel_model: "mistralai/Mistral-Small-3.2-24B-Instruct-2506"
   # The tokenizer used for calculating token counts to differentiate document sizes.
-  tokenizer_model: "mistralai/Mistral-Small-3.2-24B-Instruct-2506"
+  tokenizer_model: "unsloth/Mistral-Small-3.2-24B-Instruct-2506"
   # Global token limit for any input sent to an LLM.
   max_input_tokens: 10000
 
@@ -46,6 +48,12 @@ processing_params:
   word:
     # Token count threshold to distinguish between 'small' and 'large' documents.
     small_doc_threshold_tokens: 5000
+    # Model assignments for Word processing
+    title_structure_model: "/home/grand/llm/Qwen3-14B-Q5/snapshots/a04a82c4739b3ef5fa6da7d10261db2c67dd1985/Qwen3-14B-Q5_K_M.gguf"
+    title_only_model: "/home/grand/llm/Qwen3-14B-Q5/snapshots/a04a82c4739b3ef5fa6da7d10261db2c67dd1985/Qwen3-14B-Q5_K_M.gguf"
+    section_summary_model: "/home/grand/llm/Qwen3-14B-Q5/snapshots/a04a82c4739b3ef5fa6da7d10261db2c67dd1985/Qwen3-14B-Q5_K_M.gguf"
+    table_summary_model: "/home/grand/llm/Qwen3-14B-Q5/snapshots/a04a82c4739b3ef5fa6da7d10261db2c67dd1985/Qwen3-14B-Q5_K_M.gguf"
+    global_summary_model: "/home/grand/llm/Qwen3-14B-Q5/snapshots/a04a82c4739b3ef5fa6da7d10261db2c67dd1985/Qwen3-14B-Q5_K_M.gguf"
   # Excel document specific parameters.
   excel:
     # A sheet is considered empty if its empty cell ratio exceeds this value.
