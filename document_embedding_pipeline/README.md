@@ -268,3 +268,8 @@ The subject contains a succinct description of the change:
   * Use the imperative, present tense: "add" not "added" nor "adds".
   * Don't capitalize the first letter.
   * No dot (.) at the end.
+
+
+## Project build
+
+This project is built using a pyproject.toml in editable mode.

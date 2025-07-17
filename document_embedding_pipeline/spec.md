@@ -32,7 +32,7 @@ This pipeline handles Microsoft Word (`.docx`, `.doc`) files.
 
 2.  **PDF Conversion:** Convert the finalized `.docx` document into a PDF file using a `unoserver` instance. **The script will check for a running `unoserver` instance on startup and will exit with an error if it is not available.** All subsequent steps will operate on this generated PDF.
 
-3.  **Text Parsing:** Parse the generated PDF using **Docling** to extract its full text content. Headers and footers are to be ignored via **custom parsing logic**. The output is then converted into a **Markdown representation** to preserve structural elements like tables.
+3.  **Text Parsing:** Parse the generated PDF using **Docling** to extract its full text content. Docling automatically ignores headers and footers. The output is then converted into a **Markdown representation** to preserve structural elements like tables.
 
 
 -----

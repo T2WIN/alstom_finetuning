@@ -58,3 +58,17 @@ class ExcelDocumentPayload(BaseModel):
     title:str
     file_path: Path
     sheets: List[Sheet]
+
+class HierarchicalNode(BaseModel):
+    """A recursive model for deeply nested documents, representing a node in a tree."""
+    node_type: Literal["Section", "Table"] = Field(description="The type of the node, either a text section or a table.")
+    title: str = Field(description="The title of this section or the caption of the table.")
+    children: List['HierarchicalNode'] = Field(default_factory=list, description="A list of child nodes.")
+
+# Update the forward reference
+HierarchicalNode.model_rebuild()
+
+class WordDocumentStructure(BaseModel):
+
+    title: str = Field(description="The title of the entire document, often found in the first page, otherwise infer it from the document content")
+    structure : List['HierarchicalNode'] = Field(description="The hierarchical structure of the document")
