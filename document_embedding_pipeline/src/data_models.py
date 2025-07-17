@@ -51,6 +51,15 @@ Sheet = Annotated[
 ]
 
 
+class Headers(BaseModel):
+    headers : List[str] = Field(..., description="A list of clean headers")
+
+class Summary(BaseModel):
+    summary : str = Field(..., description="A summary of the table")
+
+class SerializedRows(BaseModel):
+    rows : List[str] = Field(..., description="List of serialized rows as sentences")
+
 class ExcelDocumentPayload(BaseModel):
     """
     Represents the payload for an Excel document.

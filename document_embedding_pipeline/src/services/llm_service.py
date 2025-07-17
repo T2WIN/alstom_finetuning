@@ -4,7 +4,7 @@ import logging
 from typing import Type, TypeVar
 import httpx
 import instructor
-from openai import OpenAI, OpenAIError
+from openai import OpenAI, OpenAIError, AsyncOpenAI
 from pydantic import BaseModel
 from transformers import AutoTokenizer, PreTrainedTokenizer
 from utils.config_loader import ConfigLoader
@@ -50,9 +50,9 @@ class LLMService:
             # As specified in spec.md, all requests must be routed through a
             # local proxy. httpx.Client is used for this purpose.
             # Note this doesn't work with llama server !!!!!!!!!!!
-            # http_client = httpx.Client(
-            #     proxy=OLLAMA_BASE_URL
-            # )
+            http_client = httpx.AsyncClient(
+                proxy=OLLAMA_BASE_URL
+            )
 
             # The OpenAI client is configured to point to the local Ollama v1 API
             # endpoint. `instructor.patch` enhances this client to handle
@@ -62,6 +62,14 @@ class LLMService:
                     base_url=f"{OLLAMA_BASE_URL}/v1",
                     api_key="ollama",  # Required by the API, but can be any string for Ollama
                     # http_client=http_client,
+                ),
+                mode=instructor.Mode.JSON,
+            )
+            self.async_client: AsyncOpenAI = instructor.patch(
+                AsyncOpenAI(
+                    base_url=f"{OLLAMA_BASE_URL}/v1",
+                    api_key="ollama",  # Required by the API, but can be any string for Ollama
+                    http_client=http_client,
                 ),
                 mode=instructor.Mode.JSON,
             )
@@ -162,3 +170,37 @@ class LLMService:
             )
             raise
 
+    async def aget_structured_response(self,
+        prompt: str,
+        response_model: Type[PydanticModel],
+        model_name: str = "qwen3:4b",
+        **kwargs,
+    ) -> PydanticModel:
+        logger.debug(f"Requesting structured response using model '{model_name}'.")
+        
+        
+        # Ensure the prompt does not exceed the maximum token limit.
+        truncated_prompt = self._truncate_text(prompt)
+        logger.info(f"Sending following prompt :{truncated_prompt}")
+
+        try:
+            response = await self.async_client.chat.completions.create(
+                model=model_name,
+                messages=[{"role": "user", "content": truncated_prompt}],
+                response_model=response_model,   # or however your wrapper spells it
+                **kwargs,
+            )
+            logger.debug(f"Successfully received and validated structured response.")
+            return response
+        except OpenAIError as e:
+            logger.error(
+                f"API call to model '{model_name}' failed: {e}", exc_info=True
+            )
+            # Propagate the error to the caller (main.py) for state handling.
+            raise
+        except Exception as e:
+            logger.error(
+                f"An unexpected error occurred while getting a structured response: {e}",
+                exc_info=True,
+            )
+            raise
