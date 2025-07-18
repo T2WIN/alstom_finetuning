@@ -4,7 +4,6 @@ Keeps the rich parsing logic of the GitHub ExcelParser, including
 complex table finding.
 """
 from __future__ import annotations
-import asyncio
 import json
 import logging
 from pathlib import Path
@@ -32,8 +31,18 @@ class ExcelProcessor(BaseProcessor):
     def __init__(
         self,
         llm_service: LLMService | None = None,
+        debug_output_path: Path | None = None,  # MODIFIED: Added debug path
     ):
+        """
+        Initializes the ExcelProcessor.
+
+        Args:
+            llm_service: An instance of LLMService.
+            debug_output_path: If provided, saves the raw detected tables
+                               to a JSON file in this directory for evaluation.
+        """
         self.llm = llm_service or LLMService()
+        self.debug_output_path = debug_output_path  # MODIFIED: Store debug path
 
     # ------------------------------------------------------------------
     # Public API
@@ -44,10 +53,15 @@ class ExcelProcessor(BaseProcessor):
         Returns the same dict structure that WordProcessor returns so the
         orchestrator can treat both uniformly, but enriched with metadata
         and detailed cell info from ExcelParser.
+
+        MODIFIED: Now also saves raw table detection results to a JSON
+        file if `debug_output_path` is set.
         """
         logger.info("Starting Excel processing: %s", file_path.name)
 
         workbook = load_workbook(file_path, data_only=True)
+        # NEW: List to store raw table data for debugging
+        debug_sheets_data = []
         try:
             sheets_out = []
             total_rows = 0
@@ -56,19 +70,37 @@ class ExcelProcessor(BaseProcessor):
             for sheet_name in workbook.sheetnames:
                 logger.info(f"Processing sheet: {sheet_name} in {file_path.name}")
                 sheet = workbook[sheet_name]
-                sheet_result = await self._process_sheet(sheet)
+
+                # 1. Find tables using the existing logic
+                raw_tables = self._find_tables(sheet)
+
+                # 2. If debugging is enabled, store the raw results
+                if self.debug_output_path:
+                    debug_sheets_data.append(
+                        {"sheet_name": sheet_name, "detected_tables": raw_tables}
+                    )
+
+                # 3. Process the found tables to generate summaries and text
+                sheet_result = await self._process_found_tables(
+                    sheet.title, raw_tables
+                )
                 sheets_out.append(sheet_result)
-                
+
+                # Update stats
                 total_rows += sheet.max_row
                 for table in sheet_result["tables"]:
                     for row in table["rows"]:
-                        total_cells_with_content += sum(1 for v in row["raw_data"].values() if v and v.get("value") is not None)
+                        total_cells_with_content += sum(
+                            1
+                            for v in row["raw_data"].values()
+                            if v and v.get("value") is not None
+                        )
 
             all_text: List[str] = []
             for sh in sheets_out:
                 for tbl in sh["tables"]:
                     all_text.extend(r["natural_language_text"] for r in tbl["rows"])
-            
+
             props = workbook.properties
             metadata = {
                 "creator": props.creator,
@@ -77,6 +109,10 @@ class ExcelProcessor(BaseProcessor):
                 "last_modified_by": props.lastModifiedBy,
                 "sheet_count": len(workbook.sheetnames),
             }
+
+            # 4. NEW: Save the debug file after processing all sheets
+            if self.debug_output_path:
+                self._save_debug_json(file_path, debug_sheets_data)
 
             return {
                 "file": str(file_path),
@@ -94,13 +130,40 @@ class ExcelProcessor(BaseProcessor):
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
-    async def _process_sheet(self, sheet) -> Dict[str, Any]:
-        """
-        Parse one sheet, detect tables, generate summaries + row texts.
-        """
-        # This now uses the more complex table finding logic
-        tables = self._find_tables(sheet)
 
+    # NEW: Helper function to save debug data
+    def _save_debug_json(
+        self, original_path: Path, sheets_data: List[Dict[str, Any]]
+    ):
+        """Saves the raw detected tables to a JSON file for debugging."""
+        if not self.debug_output_path:
+            return
+
+        self.debug_output_path.mkdir(parents=True, exist_ok=True)
+        output_filename = original_path.stem + "_tables.json"
+        output_file_path = self.debug_output_path / output_filename
+
+        debug_data = {"source_file": str(original_path), "sheets": sheets_data}
+
+        try:
+            with open(output_file_path, "w", encoding="utf-8") as f:
+                json.dump(debug_data, f, ensure_ascii=False, indent=2)
+            logger.info(f"Saved table detection debug info to: %s", output_file_path)
+        except TypeError as e:
+            logger.error(
+                f"Could not serialize debug data to JSON. Check for non-serializable types. Error: {e}"
+            )
+        except Exception as e:
+            logger.error(f"Failed to save debug JSON: {e}")
+
+    # REFACTORED: The original _process_sheet logic is now in this new helper
+    # that accepts a list of tables directly.
+    async def _process_found_tables(
+        self, sheet_name: str, tables: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """
+        Parse a list of found tables, generate summaries + row texts.
+        """
         processed_tables: List[Dict[str, Any]] = []
         for tbl in tables:
             headers = await self._rewrite_headers(tbl)
@@ -112,11 +175,12 @@ class ExcelProcessor(BaseProcessor):
                 batch = tbl["data"][start : start + batch_size]
                 texts = await self._rows_to_text(headers, summary, batch)
                 for i, (row_cells, nl_text) in enumerate(zip(batch, texts)):
-                    # Ensure we don't go out of bounds if texts is shorter
                     if row_cells:
                         rows_out.append(
                             {
-                                "raw_data": {h: cell for h, cell in zip(headers, row_cells)},
+                                "raw_data": {
+                                    h: cell for h, cell in zip(headers, row_cells)
+                                },
                                 "natural_language_text": nl_text,
                                 "row_num": row_cells[0]["row"],
                             }
@@ -131,9 +195,12 @@ class ExcelProcessor(BaseProcessor):
                 }
             )
 
-        return {"sheet_name": sheet.title, "tables": processed_tables}
+        return {"sheet_name": sheet_name, "tables": processed_tables}
 
-    # REPLACED: This method now uses the more complex logic from ExcelParser.
+    # NOTE: The original _process_sheet function was removed and its logic
+    # was refactored into the `process` and `_process_found_tables` methods.
+
+    # This method remains unchanged.
     def _find_tables(self, sheet) -> List[Dict[str, Any]]:
         """Find and process all tables in a sheet using a more complex algorithm."""
         tables = []
@@ -141,7 +208,6 @@ class ExcelProcessor(BaseProcessor):
 
         def get_table(start_row, start_col):
             """Extract a table starting from (start_row, start_col)."""
-            # Find the last column of the table by finding the rightmost column with data
             max_col = start_col
             for col in range(start_col, sheet.max_column + 1):
                 has_data_in_col = False
@@ -151,23 +217,19 @@ class ExcelProcessor(BaseProcessor):
                         max_col = col
                         break
                 if not has_data_in_col and col > start_col:
-                     # Stop if we find a fully empty column past the first one
                     break
-            
-            # Find the last row of the table
+
             max_row = start_row
             for row in range(start_row, sheet.max_row + 1):
-                has_data_in_row = any(sheet.cell(row=row, column=c).value is not None for c in range(start_col, max_col + 1))
+                has_data_in_row = any(
+                    sheet.cell(row=row, column=c).value is not None
+                    for c in range(start_col, max_col + 1)
+                )
                 if has_data_in_row:
                     max_row = row
                 else:
                     break
 
-            # Process the rectangular table region
-            headers = []
-            data_rows = []
-
-            # Process header row
             header_cells = []
             for c in range(start_col, max_col + 1):
                 cell = sheet.cell(row=start_row, column=c)
@@ -175,18 +237,22 @@ class ExcelProcessor(BaseProcessor):
                 header_cells.append(header_value)
                 if cell.value is not None:
                     visited.add((start_row, c))
-            
+
             if not any(cell["value"] is not None for cell in header_cells):
-                return None # Not a valid table if header is empty
+                return None
 
             headers = [str(cell["value"] or "") for cell in header_cells]
 
-            # Process data rows
+            data_rows = []
             for r in range(start_row + 1, max_row + 1):
                 row_data = []
                 for c in range(start_col, max_col + 1):
                     cell = sheet.cell(row=r, column=c)
-                    header = headers[c - start_col] if c - start_col < len(headers) else None
+                    header = (
+                        headers[c - start_col]
+                        if c - start_col < len(headers)
+                        else None
+                    )
                     cell_data = self._enrich_cell(cell, header, r, c)
                     if cell.value is not None:
                         visited.add((r, c))
@@ -201,36 +267,64 @@ class ExcelProcessor(BaseProcessor):
                     "start_col": start_col,
                     "end_row": max_row,
                     "end_col": max_col,
-                }
+                },
             }
 
-        # Find all tables in the sheet
         for r_idx in range(1, sheet.max_row + 1):
             for c_idx in range(1, sheet.max_column + 1):
                 if (r_idx, c_idx) in visited:
                     continue
 
                 cell = sheet.cell(row=r_idx, column=c_idx)
-                # A potential table starts with a non-visited, non-empty string cell
                 if cell.value and isinstance(cell.value, str):
                     table = get_table(r_idx, c_idx)
                     if table and table["data"]:
                         tables.append(table)
-        
+
         return tables
 
-    def _enrich_cell(self, cell, header: str, row: int, col: int) -> Dict[str, Any]:
+    def stringify_dict_values(self, d):
+        """
+        Recursively iterates through a dictionary and applies the str() function
+        to all non-dictionary values.
+
+        This function handles nested dictionaries, ensuring that every value
+        at every level of nesting is converted to a string.
+
+        Args:
+            d (dict): The dictionary to process.
+
+        Returns:
+            dict: A new dictionary with all values converted to strings.
+        """
+        if not isinstance(d, dict):
+            return d
+
+        new_dict = {}
+        for key, value in d.items():
+            if isinstance(value, dict):
+                # If the value is a dictionary, recurse into it
+                new_dict[key] = self.stringify_dict_values(value)
+            else:
+                # Otherwise, convert the value to a string
+                new_dict[key] = str(value)
+        return new_dict
+
+    # This method remains unchanged.
+    def _enrich_cell(
+        self, cell, header: str, row: int, col: int
+    ) -> Dict[str, Any]:
         """Turn openpyxl cell into a serialisable dict with rich metadata."""
         value = cell.value
         data_type = cell.data_type
-        
+
         if isinstance(cell, MergedCell):
             data_type = "merged"
             for rng in cell.parent.merged_cells.ranges:
                 if cell.coordinate in rng:
                     value = cell.parent.cell(rng.min_row, rng.min_col).value
                     break
-        
+
         enriched_data = {
             "value": value,
             "header": header,
@@ -241,14 +335,14 @@ class ExcelProcessor(BaseProcessor):
             "data_type": data_type,
             "style": {
                 "font": {
-                    "bold": cell.font.bold,
+                    "bold": str(cell.font.bold),
                     "italic": cell.font.italic,
                     "size": cell.font.size,
-                    "color": cell.font.color.rgb if cell.font.color else None,
+                    "color": str(cell.font.color.rgb) if cell.font.color else None,
                 },
                 "fill": {
                     "background_color": (
-                        cell.fill.start_color.rgb if cell.fill.start_color else None
+                        str(cell.fill.start_color.rgb) if cell.fill.start_color else None
                     )
                 },
                 "alignment": {
@@ -261,9 +355,9 @@ class ExcelProcessor(BaseProcessor):
         if cell.data_type == "f":
             enriched_data["formula"] = cell.value
 
-        return enriched_data
+        return self.stringify_dict_values(enriched_data)
 
-    # ---------------- LLM calls ---------------------------------------
+    # ---------------- LLM calls (unchanged) -------------------------
 
     async def _rewrite_headers(self, table: Dict[str, Any]) -> List[str]:
         """Use LLM to clean / rewrite column headers."""
@@ -274,19 +368,32 @@ class ExcelProcessor(BaseProcessor):
             f"First 3 rows: {sample_rows}\n\n"
             "Return only the new comma-separated headers, same order, cleaned."
         )
-        resp : Headers = await self.llm.aget_structured_response(prompt, max_tokens=256, response_model=Headers)
+        resp: Headers = await self.llm.aget_structured_response(
+            prompt, max_tokens=256, response_model=Headers
+        )
         new_headers = resp.headers
-        return new_headers if len(new_headers) == len(table["headers"]) else table["headers"]
+        return (
+            new_headers
+            if len(new_headers) == len(table["headers"])
+            else table["headers"]
+        )
 
-    async def _summarise_table(self, headers: List[str], data: List[List[Dict[str, Any]]]) -> str:
+    async def _summarise_table(
+        self, headers: List[str], data: List[List[Dict[str, Any]]]
+    ) -> str:
         """Generate a concise natural-language summary of the table."""
-        sample = [{h: str(cell["value"]) for h, cell in zip(headers, row)} for row in data[:3]]
+        sample = [
+            {h: str(cell["value"]) for h, cell in zip(headers, row)}
+            for row in data[:3]
+        ]
         prompt = (
             "Summarise the following table in 1-2 sentences:\n"
             f"Headers: {headers}\n"
             f"Sample rows: {json.dumps(sample, ensure_ascii=False, indent=2)}"
         )
-        resp : Summary = await self.llm.aget_structured_response(prompt, max_tokens=256, response_model=Summary)
+        resp: Summary = await self.llm.aget_structured_response(
+            prompt, max_tokens=256, response_model=Summary
+        )
         return resp.summary
 
     async def _rows_to_text(
@@ -298,7 +405,7 @@ class ExcelProcessor(BaseProcessor):
         """Convert a batch of rows into natural language sentences."""
         if not rows:
             return []
-            
+
         rows_dict = [{h: str(c["value"]) for h, c in zip(headers, r)} for r in rows]
         prompt = (
             "Given the table summary below, convert each row into a standalone sentence.\n"
@@ -307,7 +414,9 @@ class ExcelProcessor(BaseProcessor):
             "Return a list of strings, where each string corresponds to a row."
         )
         try:
-            resp : SerializedRows = await self.llm.aget_structured_response(prompt, max_tokens=2048, response_model=SerializedRows)
+            resp: SerializedRows = await self.llm.aget_structured_response(
+                prompt, response_model=SerializedRows
+            )
             return resp.rows
         except Exception as e:
             logger.error(f"Could not generate structured text for rows. Error: {e}")

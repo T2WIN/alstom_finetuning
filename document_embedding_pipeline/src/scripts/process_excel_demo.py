@@ -22,7 +22,7 @@ async def process_one(file_path: Path) -> None:
     logger.info("🟢 START  %s", file_path.name)
     try:
         llm = LLMService()
-        proc = ExcelProcessor(llm_service=llm)
+        proc = ExcelProcessor(llm_service=llm, debug_output_path=Path("/home/grand/alstom_finetuning/data/test"))
         result = await proc.process(file_path)
 
         # quick sanity checks
