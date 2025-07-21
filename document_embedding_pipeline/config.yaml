@@ -5,7 +5,7 @@
 # --- Paths and Directories ---
 paths:
   # Path to the local embedding model directory, as specified in the spec.
-  embedding_model_dir: "models/qwen3-embed-0.6b"
+  embedding_model_dir: "/home/grand/Finetuning/models/qwen3-embed-0.6b"
   #Path to the docling models
   artifacts_path : "document_embedding_pipeline/models/ds4sd--docling-models/"
   # Name of the temporary folder for intermediate processing files.

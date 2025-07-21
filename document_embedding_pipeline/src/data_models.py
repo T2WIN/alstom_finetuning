@@ -70,7 +70,7 @@ class ExcelDocumentPayload(BaseModel):
     Represents the payload for an Excel document.
     """
     title:str
-    file_path: Path
+    file_path: str
     sheets: List[Sheet]
 
 class HierarchicalNode(BaseModel):

@@ -26,8 +26,9 @@ async def process_one(llm, processor, file_path: Path) -> None:
 
         # write summary JSON next to the file for human inspection
         summary_path = file_path.with_suffix(".summary.json")
+        logger.info(result)
         with summary_path.open("w", encoding="utf-8") as file:
-            json.dump(result, file)
+            json.dump(result.model_dump(), file)
         logger.debug("Wrote preview → %s", summary_path)
 
     except Exception as exc:

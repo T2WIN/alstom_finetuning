@@ -31,7 +31,7 @@ class QdrantService:
         self.client = QdrantClient(path=db_path)
         self.collection_name = collection_name
         self.vector_size = vector_size
-        self.distance_metric = distance_metric.upper()
+        self.distance_metric = distance_metric
         self.embedding_model = SentenceTransformer(embedding_model_path)
         self._create_collection_if_not_exists()
     

@@ -35,7 +35,8 @@ async def main(input_folder: Path, output_folder: Path):
         sys.exit(1)
 
     # Create output directories if they don't exist
-    log_path = output_folder / config["paths"]["log_file"]
+    # log_path = output_folder / config["paths"]["log_file"]
+    log_path = Path("/home/grand/alstom_finetuning/data/test") / config["paths"]["log_file"]
     setup_logging(log_path)
 
     logger.info("=====================================================")
@@ -54,7 +55,7 @@ async def main(input_folder: Path, output_folder: Path):
         logger.error("Please start the unoserver instance and try again. Exiting.")
         sys.exit(1)
     files_to_process = Path("/home/grand/alstom_finetuning/data/SSPHA projets").rglob("*")
-    excel_files = [file_path for file_path in files_to_process if file_path.suffix in [".xlsx", ".xls"]]
+    excel_files = [file_path for file_path in files_to_process if file_path.suffix in [".xlsx"]]
     word_files = [file_path for file_path in files_to_process if file_path.suffix in [".docx", ".doc"]]
 
     progress_bar_word = tqdm(word_files, desc="Processing Word Documents", unit="file")
@@ -68,9 +69,10 @@ async def main(input_folder: Path, output_folder: Path):
         result = word_processor.process(file_path)
         word_results.append(result)
     
-    excel_tasks = [excel_processor.process(file_path) for file_path in excel_files]
+    excel_tasks = [[excel_processor.process(file_path) for file_path in excel_files][0]]
     excel_results = await tqdm_asyncio.gather(*excel_tasks)
 
+    logger.info(config["qdrant"]["distance_metric"])
     database = QdrantService(db_path=config["paths"]["qdrant_db_path"], 
                              collection_name=config["qdrant"]["collection_name"], 
                              vector_size=config["qdrant"]["vector_size"],
@@ -92,26 +94,28 @@ if __name__ == "__main__":
     parser.add_argument(
         "--input-folder",
         type=str,
-        required=True,
+        required=False,
         help="Path to the folder containing .docx, .doc, .xlsx, and .xls files.",
     )
     parser.add_argument(
         "--output-folder",
         type=str,
-        required=True,
+        required=False,
         help="Path to the folder where logs, temporary files, and final datasets will be stored.",
     )
 
-    args = parser.parse_args()
+    # args = parser.parse_args()
 
-    input_path = Path(args.input_folder)
-    output_path = Path(args.output_folder)
+    # input_path = Path(args.input_folder)
+    # output_path = Path(args.output_folder)
+    input_path = ""
+    output_path = ""
 
-    if not input_path.is_dir():
-        print(f"Error: The specified input folder does not exist: {input_path}")
-        sys.exit(1)
+    # if not input_path.is_dir():
+    #     print(f"Error: The specified input folder does not exist: {input_path}")
+    #     sys.exit(1)
         
     # Create the output directory if it doesn't exist
-    output_path.mkdir(parents=True, exist_ok=True)
+    # output_path.mkdir(parents=True, exist_ok=True)
 
     asyncio.run(main(input_folder=input_path, output_folder=output_path))
