@@ -327,15 +327,6 @@ def get_llm_configs() -> List[LLMClientConfig]:
             concurrency=1
         ),
         LLMClientConfig(
-            name="Nvidia-DeepseekR1",
-            model="deepseek-ai/deepseek-r1",
-            base_url="https://integrate.api.nvidia.com/v1",
-            api_key=config.NVIDIA_API_KEY,
-            rpm_limit=4,
-            daily_limit=10000,
-            concurrency=1
-        ),
-        LLMClientConfig(
             name="Magistral Medium",
             model="magistral-medium-2506",
             base_url="https://api.mistral.ai/v1/",
@@ -388,6 +379,23 @@ def get_llm_configs() -> List[LLMClientConfig]:
             rpm_limit=5,
             daily_limit=10000,
             concurrency=1
-        )
-
+        ),
+        LLMClientConfig(
+            name="OpenRouter-Mistral-Small-Paid",
+            model="mistralai/mistral-small-3.2-24b-instruct",  # Example model, choose as needed
+            base_url="https://openrouter.ai/api/v1",
+            api_key=config.GROQ_API_KEY,  # Replace with your Together API key variable
+            rpm_limit=60,
+            daily_limit=10000,
+            concurrency=1
+        ),
+        LLMClientConfig(
+            name="OpenRouter-Mistral-Small-Free",
+            model="mistralai/mistral-small-3.2-24b-instruct:free",  # Example model, choose as needed
+            base_url="https://openrouter.ai/api/v1",
+            api_key=config.GROQ_API_KEY,  # Replace with your Together API key variable
+            rpm_limit=15,
+            daily_limit=10000,
+            concurrency=1
+        ),
     ]

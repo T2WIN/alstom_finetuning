@@ -8,7 +8,7 @@ first_try
 *.json
 vector_store
 *.csv
-*.log
+*.log*
 __pycache__
 document_embedding_pipeline/src/document_embedding_pipeline.egg-info
 qdrant_db

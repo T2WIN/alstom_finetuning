@@ -32,15 +32,17 @@ class ContentSheet(BaseSheet):
     """
     Represents a sheet within an Excel document.
     """
+    sheet_name : str
     sheet_type: Literal["content"] = "content"
     content : str
     summary : str
 
 class Column(BaseModel):
-    column_name: str
+    name: str
     description: str
 
 class TableSheet(BaseSheet):
+    sheet_name : str
     sheet_type: Literal["table"] = "table"
     table_schema : List[Column]
     table_summary : str
@@ -50,9 +52,12 @@ Sheet = Annotated[
     Field(discriminator="sheet_type")
 ]
 
+class Header(BaseModel):
+    name : str = Field(..., description="The name of header exactly as seen in the table")
+    description : str = Field(..., description="A text description of the header infered on the content of rows")
 
 class Headers(BaseModel):
-    headers : List[str] = Field(..., description="A list of clean headers")
+    headers : List[Header] = Field(..., description="A list of clean headers")
 
 class Summary(BaseModel):
     summary : str = Field(..., description="A summary of the table")

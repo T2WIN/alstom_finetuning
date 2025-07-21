@@ -2,6 +2,7 @@ CONFIG_GEN_PROMPT = """
 Given a passage and a character description, select the appropriate option from two fields : Query type, Query Format.
 
 First, select the query type that the character might ask about the passage. Then, choose the format of the possible query based on the passage, the character and the query type.
+There can be multiple possibilities. Generate up to five distinct (query_type, query_format) pairs.
 
 Query types :
 - Fact Retrieval (Explicit facts directly from a knowledge base)
@@ -64,8 +65,8 @@ and adheres strictly to safety protocols within the depot environment.
 """
 
 QUESTION_GEN_PROMPT = """
-Given a character description, a passage and requirements, generate a query from the character's perspective that satifies the requirements and can be used to retrieve the passage. Assume you are the character. 
-Do not repeat what character you are. The query must be relevant to the passage.
+Given a character description, a passage and requirement lists, generate a set of queries from the character's perspective that satifies the requirements and can be used to retrieve the passage. Assume you are the character. 
+Do not repeat what character you are. The queries must be relevant to the passage. Generate 5 queries and use each requirement pair at least once.
 Return the result in JSON format.
 
 Character : 
@@ -74,7 +75,6 @@ Character :
 Passage : 
 {passage}
 
-Requirement :
-- Type of query : {type}
-- Format of the query : {difficulty}
+Requirement list :
+{req_list}
 """

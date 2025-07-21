@@ -10,6 +10,7 @@ import logging
 import sys
 from datetime import datetime
 from pathlib import Path
+import json
 
 from pipeline.excel_processor import ExcelProcessor
 from services.llm_service import LLMService  # adjust import if needed
@@ -18,31 +19,15 @@ from utils.logging_setup import setup_logging   # adjust import if needed
 setup_logging("logs", "INFO")
 logger = logging.getLogger(__name__)
 
-async def process_one(file_path: Path) -> None:
+async def process_one(llm, processor, file_path: Path) -> None:
     logger.info("🟢 START  %s", file_path.name)
     try:
-        llm = LLMService()
-        proc = ExcelProcessor(llm_service=llm, debug_output_path=Path("/home/grand/alstom_finetuning/data/test"))
-        result = await proc.process(file_path)
-
-        # quick sanity checks
-        sheet_cnt = len(result["sheets"])
-        total_rows = sum(
-            len(tbl["rows"]) for sh in result["sheets"] for tbl in sh["tables"]
-        )
-        logger.info(
-            "✅ FINISH %s  (%d sheets, %d total rows processed)",
-            file_path.name,
-            sheet_cnt,
-            total_rows,
-        )
+        result = await processor.process(file_path)
 
         # write summary JSON next to the file for human inspection
         summary_path = file_path.with_suffix(".summary.json")
-        summary_path.write_text(
-            result["text_content"][:500] + ("..." if len(result["text_content"]) > 500 else ""),
-            encoding="utf-8",
-        )
+        with summary_path.open("w", encoding="utf-8") as file:
+            json.dump(result, file)
         logger.debug("Wrote preview → %s", summary_path)
 
     except Exception as exc:
@@ -65,9 +50,11 @@ async def main() -> None:
     if not excel_files:
         logger.warning("No Excel files found. Exiting.")
         return
-
+    llm = LLMService()
+    proc = ExcelProcessor("test")
+    
     logger.info("Found %d file(s). Processing concurrently...", len(excel_files))
-    tasks = [process_one(f) for f in excel_files]
+    tasks = [process_one(file_path=f, llm=llm, processor=proc) for f in excel_files]
     await asyncio.gather(*tasks)
 
 

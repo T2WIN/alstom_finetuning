@@ -2,23 +2,23 @@ import argparse
 import logging
 import sys
 from pathlib import Path
+import asyncio
 from typing import Dict, Any
 
 import yaml
+from tqdm.asyncio import tqdm_asyncio
 from tqdm import tqdm
 
 # Import custom modules from the project structure
-from src.pipeline.excel_processor import ExcelProcessor
-from src.pipeline.word_processor import WordProcessor
-from src.services.unoserver_service import check_unoserver_availability
-from src.utils.file_handler import get_supported_files
-from src.utils.logging_setup import setup_logging
-from src.utils.state_manager import StateManager
+from pipeline.excel_processor import ExcelProcessor
+from pipeline.word_processor import WordProcessor
+from services.qdrant_service import QdrantService
+from utils.logging_setup import setup_logging
 
 # Set up a logger for the main orchestrator
 logger = logging.getLogger(__name__)
 
-def main(input_folder: Path, output_folder: Path):
+async def main(input_folder: Path, output_folder: Path):
     """
     Main orchestrator for the document processing pipeline.
 
@@ -48,62 +48,41 @@ def main(input_folder: Path, output_folder: Path):
     logger.info("Performing pre-run system checks...")
     try:
         # As per spec, check for unoserver before starting processing
-        check_unoserver_availability(config['services']['unoserver'])
         logger.info("✅ Unoserver is available.")
     except ConnectionRefusedError as e:
         logger.error(f"❌ CRITICAL: {e}")
         logger.error("Please start the unoserver instance and try again. Exiting.")
         sys.exit(1)
+    files_to_process = Path("/home/grand/alstom_finetuning/data/SSPHA projets").rglob("*")
+    excel_files = [file_path for file_path in files_to_process if file_path.suffix in [".xlsx", ".xls"]]
+    word_files = [file_path for file_path in files_to_process if file_path.suffix in [".docx", ".doc"]]
 
-    # --- 3. State Initialization ---
-    state_manager = StateManager(output_folder)
-    initial_files = get_supported_files(input_folder)
-    state_manager.initialize_state(initial_files)
+    progress_bar_word = tqdm(word_files, desc="Processing Word Documents", unit="file")
+
+    word_processor = WordProcessor(temp_folder=config["paths"]["temp_dir_name"])
+    excel_processor = ExcelProcessor(temp_folder=config["paths"]["temp_dir_name"])
+
+    word_results = []
+    for file_path in progress_bar_word:
+        progress_bar_word.set_postfix_str(file_path.name)
+        result = word_processor.process(file_path)
+        word_results.append(result)
     
-    files_to_process = state_manager.get_pending_files()
-    if not files_to_process:
-        logger.info("No new or pending files to process. All documents are up-to-date.")
-        logger.info("Pipeline finished.")
-        return
+    excel_tasks = [excel_processor.process(file_path) for file_path in excel_files]
+    excel_results = await tqdm_asyncio.gather(*excel_tasks)
 
-    logger.info(f"Found {len(files_to_process)} documents to process.")
+    database = QdrantService(db_path=config["paths"]["qdrant_db_path"], 
+                             collection_name=config["qdrant"]["collection_name"], 
+                             vector_size=config["qdrant"]["vector_size"],
+                             distance_metric=config["qdrant"]["distance_metric"],
+                             embedding_model_path=config["paths"]["embedding_model_dir"])
+    for excel_doc in excel_results:
+        database.upsert_excel_document(excel_doc)
 
-    # --- 4. Main Processing Loop ---
-    # The loop iterates through all files marked for processing.
-    # The error handling logic from the README is implemented here:
-    # exceptions are caught only at this top level.
-    progress_bar = tqdm(files_to_process, desc="Processing Documents", unit="file")
-    for file_path in progress_bar:
-        progress_bar.set_postfix_str(file_path.name)
+
+    
         
-        try:
-            # Determine which processor to use based on the file extension
-            extension = file_path.suffix.lower()
-            if extension in [".docx", ".doc"]:
-                processor = WordProcessor(file_path, output_folder, config, state_manager)
-            elif extension in [".xlsx", ".xls"]:
-                processor = ExcelProcessor(file_path, output_folder, config, state_manager)
-            else:
-                # This case should technically not be reached due to get_supported_files
-                logger.warning(f"Unsupported file type for {file_path}. Skipping.")
-                continue
 
-            # This is the main processing call. It executes the state machine for the doc.
-            processor.process()
-            
-            # If process() completes without error, the processor itself updates the state to 'COMPLETE'.
-            logger.info(f"✅ Successfully completed processing for: {file_path.name}")
-
-        except Exception as e:
-            # This is the single catch-all block as per the error handling design.
-            # It handles any exception that propagates up from services or processors.
-            logger.error(f"🚨 An error occurred while processing {file_path.name}: {e}", exc_info=True)
-            state_manager.record_failure(file_path)
-
-    logger.info("=====================================================")
-    logger.info("Pipeline run finished.")
-    state_manager.log_summary()
-    logger.info("=====================================================")
 
 
 if __name__ == "__main__":
@@ -135,4 +114,4 @@ if __name__ == "__main__":
     # Create the output directory if it doesn't exist
     output_path.mkdir(parents=True, exist_ok=True)
 
-    main(input_folder=input_path, output_folder=output_path)
+    asyncio.run(main(input_folder=input_path, output_folder=output_path))

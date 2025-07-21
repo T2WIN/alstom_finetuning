@@ -16,7 +16,7 @@ import config
 import prompts
 import vector_store
 from llm_services import LLMDispatcher, LLMClientConfig, get_llm_configs
-from schema import Query, CharacterQuestionAnalysis
+from schema import QuerySet, ConfigurationSet
 
 # --- Logging Setup ---
 logger = logging.getLogger(__name__)
@@ -76,9 +76,9 @@ class QuestionGenerator:
         most_similar_prompt_index = np.argmax(similarities)
         return self.characters[most_similar_prompt_index]
 
-    def save_query_to_vector_store(self, query: Query, node: BaseNode):
-        """Saves the generated query to the document's metadata in the docstore."""
-        node.metadata["generated_query"] = query.query
+    def save_query_set_to_vector_store(self, query: QuerySet, node: BaseNode):
+        """Saves the generated query set to the document's metadata in the docstore."""
+        node.metadata["generated_query"] = query.queries
         self.vector_store.delete_nodes([node.node_id])
         self.vector_store.add([node])
         logger.debug(f"Saved generated query for document {node.node_id}.")
@@ -143,23 +143,24 @@ class QuestionGenerator:
                 # --- LLM Call 1 ---
                 llm1_start_time = time.time()
                 config_gen_context = prompts.CONFIG_GEN_PROMPT.format(character=relevant_character, passage=doc_text)
-                query_gen_config: CharacterQuestionAnalysis = await self.structured_output_llm_async(config_gen_context, CharacterQuestionAnalysis, client_config)
+                query_gen_config: ConfigurationSet = await self.structured_output_llm_async(config_gen_context, ConfigurationSet, client_config)
                 llm1_duration = time.time() - llm1_start_time
                 logger.info(f"METRIC: LLM call 1 (Analysis) for doc {doc_id} took {llm1_duration:.4f}s using {client_config.name}")
                 
                 # --- LLM Call 2 ---
+                configs = [{"query_type" : config.query_type, "query_format" : config.query_format} for config in query_gen_config.configurations]
                 llm2_start_time = time.time()
                 question_gen_prompt = prompts.QUESTION_GEN_PROMPT.format(
                     character=relevant_character, passage=doc_text,
-                    type=query_gen_config.query_type, difficulty=query_gen_config.query_format,
+                    req_list=configs
                 )
-                generated_query: Query = await self.structured_output_llm_async(question_gen_prompt, Query, client_config)
+                generated_query: QuerySet = await self.structured_output_llm_async(question_gen_prompt, QuerySet, client_config)
                 llm2_duration = time.time() - llm2_start_time
                 logger.info(f"METRIC: LLM call 2 (Question) for doc {doc_id} took {llm2_duration:.4f}s using {client_config.name}")
                 
                 # --- Vector Store Save ---
                 save_start_time = time.time()
-                self.save_query_to_vector_store(generated_query, document)
+                self.save_query_set_to_vector_store(generated_query, document)
                 save_duration = time.time() - save_start_time
                 logger.info(f"METRIC: Vector store save for doc {doc_id} took {save_duration:.4f}s")
                 

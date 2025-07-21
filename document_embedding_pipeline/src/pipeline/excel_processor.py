@@ -16,7 +16,7 @@ from openpyxl.utils import get_column_letter
 from services.llm_service import LLMService
 from utils.logging_setup import setup_logging
 from pipeline.base_processor import BaseProcessor
-from data_models import Headers, Summary, SerializedRows
+from data_models import Headers, Summary, SerializedRows, ExcelDocumentPayload, Header
 
 
 logger = logging.getLogger(__name__)
@@ -30,19 +30,15 @@ class ExcelProcessor(BaseProcessor):
 
     def __init__(
         self,
-        llm_service: LLMService | None = None,
-        debug_output_path: Path | None = None,  # MODIFIED: Added debug path
+        temp_folder : Path,
     ):
         """
         Initializes the ExcelProcessor.
 
         Args:
-            llm_service: An instance of LLMService.
-            debug_output_path: If provided, saves the raw detected tables
-                               to a JSON file in this directory for evaluation.
+            temp_folder : Path
         """
-        self.llm = llm_service or LLMService()
-        self.debug_output_path = debug_output_path  # MODIFIED: Store debug path
+        self.llm = LLMService()
 
     # ------------------------------------------------------------------
     # Public API
@@ -53,138 +49,200 @@ class ExcelProcessor(BaseProcessor):
         Returns the same dict structure that WordProcessor returns so the
         orchestrator can treat both uniformly, but enriched with metadata
         and detailed cell info from ExcelParser.
-
-        MODIFIED: Now also saves raw table detection results to a JSON
-        file if `debug_output_path` is set.
         """
         logger.info("Starting Excel processing: %s", file_path.name)
 
         workbook = load_workbook(file_path, data_only=True)
-        # NEW: List to store raw table data for debugging
-        debug_sheets_data = []
         try:
-            sheets_out = []
+            content_sheets_data = []
+            table_sheets_data = []
             total_rows = 0
             total_cells_with_content = 0
-
+            classifications = []
             for sheet_name in workbook.sheetnames:
-                logger.info(f"Processing sheet: {sheet_name} in {file_path.name}")
                 sheet = workbook[sheet_name]
+                classification = self._classify_sheet(sheet)
+                logger.info(f"Sheet: {sheet_name} is {classification}")
+                classifications.append((sheet_name, classification))
 
-                # 1. Find tables using the existing logic
-                raw_tables = self._find_tables(sheet)
+            for sheet_name, classification in classifications:
+                if classification == "content":
+                    sheet = workbook[sheet_name]
+                    logger.info(f"Parsing content sheet {sheet_name}")
+                    content = "" 
+                    blocks = self._find_all_blocks(sheet)
+                    for idx, block in enumerate(blocks):
+                        content += f"Block {idx} :"
+                        content += self._tiny_markdown_table(sheet, block)
+                        content += "\n"
+                    summary = "summary" #Placeholder for now, will be turned into LLM call later
+                    content_sheets_data.append((sheet_name, content, summary))
 
-                # 2. If debugging is enabled, store the raw results
-                if self.debug_output_path:
-                    debug_sheets_data.append(
-                        {"sheet_name": sheet_name, "detected_tables": raw_tables}
+            for sheet_name, classification in classifications:       
+                if classification == "table":
+                    sheet = workbook[sheet_name]
+                    logger.info(f"Parsing table sheet {sheet_name}")
+                    # 1. Find tables using the existing logic
+                    raw_tables = self._find_tables(sheet)
+
+                    # 3. Process the found tables to generate summaries and text
+                    logger.info(content_sheets_data)
+                    sheet_result = await self._process_found_tables(
+                        sheet.title, raw_tables, content_sheets_data
                     )
+                    table_sheets_data.append(sheet_result)
 
-                # 3. Process the found tables to generate summaries and text
-                sheet_result = await self._process_found_tables(
-                    sheet.title, raw_tables
-                )
-                sheets_out.append(sheet_result)
+                    # Update stats
+                    total_rows += sheet.max_row
+                    for table in sheet_result["tables"]:
+                        for row in table["rows"]:
+                            total_cells_with_content += sum(
+                                1
+                                for v in row["raw_data"].values()
+                                if v and v.get("value") is not None
+                            )                  
 
-                # Update stats
-                total_rows += sheet.max_row
-                for table in sheet_result["tables"]:
-                    for row in table["rows"]:
-                        total_cells_with_content += sum(
-                            1
-                            for v in row["raw_data"].values()
-                            if v and v.get("value") is not None
-                        )
-
-            all_text: List[str] = []
-            for sh in sheets_out:
-                for tbl in sh["tables"]:
-                    all_text.extend(r["natural_language_text"] for r in tbl["rows"])
-
-            props = workbook.properties
-            metadata = {
-                "creator": props.creator,
-                "created": props.created.isoformat() if props.created else None,
-                "modified": props.modified.isoformat() if props.modified else None,
-                "last_modified_by": props.lastModifiedBy,
-                "sheet_count": len(workbook.sheetnames),
+            content_sheets_cleaned = []
+            for sheet_name, full_text_content, summary in content_sheets_data:
+                content_sheets_cleaned.append({
+                    "sheet_type" : "content",
+                    "sheet_name": sheet_name,
+                    "summary" : summary,
+                    "content" : full_text_content
+                })
+            
+            table_sheets_cleaned = []
+            # logger.info(table_sheets_data[0]["tables"])
+            for idx, sheet in enumerate(table_sheets_data):
+                for table in sheet["tables"]:
+                    headers = [header.model_dump() for header in table["headers"]]
+                    table_sheets_cleaned.append({
+                        "sheet_type" : "table",
+                        "sheet_name" : f"{sheet_name} {idx}",
+                        "table_schema" : headers,
+                        "table_summary": table["summary"],
+                    })
+            logger.info(table_sheets_cleaned[0])
+            data = {
+                "file_path" : str(file_path),
+                "title" : "test",
+                "sheets" : table_sheets_cleaned 
             }
-
-            # 4. NEW: Save the debug file after processing all sheets
-            if self.debug_output_path:
-                self._save_debug_json(file_path, debug_sheets_data)
-
-            return {
-                "file": str(file_path),
-                "metadata": metadata,
-                "sheets": sheets_out,
-                "text_content": "\n".join(all_text),
-                "sheet_names": workbook.sheetnames,
-                "total_rows": total_rows,
-                "total_cells": total_cells_with_content,
-            }
+            return ExcelDocumentPayload(**data)
 
         finally:
             workbook.close()
 
     # ------------------------------------------------------------------
     # Internal helpers
-    # ------------------------------------------------------------------
+    # -----------------------------------   -------------------------------
 
-    # NEW: Helper function to save debug data
-    def _save_debug_json(
-        self, original_path: Path, sheets_data: List[Dict[str, Any]]
-    ):
-        """Saves the raw detected tables to a JSON file for debugging."""
-        if not self.debug_output_path:
-            return
+    @staticmethod
+    def _tiny_markdown_table(ws, block, rows=8, cols=6):
+        """
+        Returns a compact markdown table (no header, ≤ rows×cols cells)
+        for the top-left corner of the block.
+        """
+        r1, r2 = block["r1"], block["r2"]
+        c1, c2 = block["c1"], block["c2"]
+        lines = []
+        for r in range(r1, min(r1 + rows, r2 + 1)):
+            cells = [
+                str(ws.cell(row=r, column=c).value or "")
+                for c in range(c1, min(c1 + cols, c2 + 1))
+            ]
+            lines.append("| " + " | ".join(cells) + " |")
+        if r2 - r1 + 1 > rows:
+            lines[-1] += "\n⋮"
+        if c2 - c1 + 1 > cols:
+            lines = [ln + " …" for ln in lines]
+        return "\n".join(lines) if lines else "(empty)"
 
-        self.debug_output_path.mkdir(parents=True, exist_ok=True)
-        output_filename = original_path.stem + "_tables.json"
-        output_file_path = self.debug_output_path / output_filename
+    def _classify_sheet(self, sheet) -> str:
+        """
+        Classifies the worksheet as either 'table' or 'content'.
 
-        debug_data = {"source_file": str(original_path), "sheets": sheets_data}
+        Returns
+        -------
+        str
+            'table'  – if the sheet contains at least one block with > 100 filled cells  
+            'content' – otherwise
+        """
+        blocks: List[Dict] = self._find_all_blocks(sheet)
 
-        try:
-            with open(output_file_path, "w", encoding="utf-8") as f:
-                json.dump(debug_data, f, ensure_ascii=False, indent=2)
-            logger.info(f"Saved table detection debug info to: %s", output_file_path)
-        except TypeError as e:
-            logger.error(
-                f"Could not serialize debug data to JSON. Check for non-serializable types. Error: {e}"
-            )
-        except Exception as e:
-            logger.error(f"Failed to save debug JSON: {e}")
+        # Check the “table” criterion
+        if any(b["non_empty"] > 80 for b in blocks):
+            return "table"
 
-    # REFACTORED: The original _process_sheet logic is now in this new helper
-    # that accepts a list of tables directly.
+        return "content"
+
+    @staticmethod
+    def _find_all_blocks(ws):
+        """
+        Quick, lightweight scan to return every rectangular block of
+        non-empty cells (including single-cell blocks).
+        Returns list[dict] with r1, r2, c1, c2, rows, cols, non_empty.
+        """
+        visited = [[False] * (ws.max_column + 1) for _ in range(ws.max_row + 1)]
+        blocks = []
+
+        def _dfs(r, c):
+            stack = [(r, c)]
+            min_r = max_r = r
+            min_c = max_c = c
+            filled = 0
+            while stack:
+                x, y = stack.pop()
+                if x < 1 or y < 1 or x > ws.max_row or y > ws.max_column:
+                    continue
+                if visited[x][y] or ws.cell(row=x, column=y).value is None:
+                    continue
+                visited[x][y] = True
+                filled += 1
+                min_r, max_r = min(min_r, x), max(max_r, x)
+                min_c, max_c = min(min_c, y), max(max_c, y)
+                for dx, dy in ((0, 1), (1, 0), (0, -1), (-1, 0)):
+                    stack.append((x + dx, y + dy))
+            return {
+                "r1": min_r, "r2": max_r, "c1": min_c, "c2": max_c,
+                "rows": max_r - min_r + 1,
+                "cols": max_c - min_c + 1,
+                "non_empty": filled,
+            }
+
+        for row in range(1, min(ws.max_row + 1, 200)): # min is there to avoid visiting all cells in very large tables
+            for col in range(1, min(ws.max_column + 1, 100)):
+                if not visited[row][col] and ws.cell(row=row, column=col).value is not None:
+                    blocks.append(_dfs(row, col))
+        return blocks
+    
     async def _process_found_tables(
-        self, sheet_name: str, tables: List[Dict[str, Any]]
+        self, sheet_name: str, tables: List[Dict[str, Any]], context : List[(str,str, str)]
     ) -> Dict[str, Any]:
         """
         Parse a list of found tables, generate summaries + row texts.
         """
         processed_tables: List[Dict[str, Any]] = []
         for tbl in tables:
-            headers = await self._rewrite_headers(tbl)
-            summary = await self._summarise_table(headers, tbl["data"])
+            headers : Headers = await self._rewrite_headers(tbl)
+            summary = await self._summarise_table(headers, tbl["data"], context)
 
             rows_out: List[Dict[str, Any]] = []
-            batch_size = 20
-            for start in range(0, len(tbl["data"]), batch_size):
-                batch = tbl["data"][start : start + batch_size]
-                texts = await self._rows_to_text(headers, summary, batch)
-                for i, (row_cells, nl_text) in enumerate(zip(batch, texts)):
-                    if row_cells:
-                        rows_out.append(
-                            {
-                                "raw_data": {
-                                    h: cell for h, cell in zip(headers, row_cells)
-                                },
-                                "natural_language_text": nl_text,
-                                "row_num": row_cells[0]["row"],
-                            }
-                        )
+            # batch_size = 20
+            # for start in range(0, len(tbl["data"]), batch_size):
+            #     batch = tbl["data"][start : start + batch_size]
+            #     texts = await self._rows_to_text(headers, summary, batch)
+            #     for i, (row_cells, nl_text) in enumerate(zip(batch, texts)):
+            #         if row_cells:
+            #             rows_out.append(
+            #                 {
+            #                     "raw_data": {
+            #                         h: cell for h, cell in zip(headers, row_cells)
+            #                     },
+            #                     "natural_language_text": nl_text,
+            #                     "row_num": row_cells[0]["row"],
+            #                 }
+            #             )
 
             processed_tables.append(
                 {
@@ -361,38 +419,42 @@ class ExcelProcessor(BaseProcessor):
 
     async def _rewrite_headers(self, table: Dict[str, Any]) -> List[str]:
         """Use LLM to clean / rewrite column headers."""
-        sample_rows = [[c["value"] for c in r] for r in table["data"][:3]]
+        sample_rows = [[c["value"] for c in r] for r in table["data"][4:7]]
         prompt = (
             "You are a data-analysis expert.\n"
             f"Original headers: {table['headers']}\n"
             f"First 3 rows: {sample_rows}\n\n"
-            "Return only the new comma-separated headers, same order, cleaned."
+            "Return only the new headers, same order, cleaned with a short description based on the values seen in the rows."
         )
-        resp: Headers = await self.llm.aget_structured_response(
-            prompt, max_tokens=256, response_model=Headers
+        headers: Headers = await self.llm.aget_structured_response(
+            prompt, max_tokens=1024, response_model=Headers
         )
-        new_headers = resp.headers
-        return (
-            new_headers
-            if len(new_headers) == len(table["headers"])
-            else table["headers"]
-        )
+        return headers.headers
 
     async def _summarise_table(
-        self, headers: List[str], data: List[List[Dict[str, Any]]]
+        self, headers: List[Header], data: List[List[Dict[str, Any]]], context : List[(str, str, str)]
     ) -> str:
         """Generate a concise natural-language summary of the table."""
+        formatted_context = ""
+        for idx, (sheet_name, sheet_content, _) in enumerate(context):
+            formatted_context += f"Sheet {idx} called {sheet_name} :\n"
+            formatted_context += sheet_content
+            formatted_context += "\n"
+
         sample = [
-            {h: str(cell["value"]) for h, cell in zip(headers, row)}
-            for row in data[:3]
+            {h.name: str(cell["value"]) for h, cell in zip(headers, row)}
+            for row in data[4:7]
         ]
+
+        header_names = [header.name for header in headers]
         prompt = (
             "Summarise the following table in 1-2 sentences:\n"
-            f"Headers: {headers}\n"
+            f"Headers: {header_names}\n"
             f"Sample rows: {json.dumps(sample, ensure_ascii=False, indent=2)}"
+            f"Here is context gathered from other sheets that might help you understand : {formatted_context}"
         )
         resp: Summary = await self.llm.aget_structured_response(
-            prompt, max_tokens=256, response_model=Summary
+            prompt, max_tokens=512, response_model=Summary
         )
         return resp.summary
 
@@ -411,7 +473,7 @@ class ExcelProcessor(BaseProcessor):
             "Given the table summary below, convert each row into a standalone sentence.\n"
             f"Summary: {table_summary}\n"
             f"Rows: {json.dumps(rows_dict, ensure_ascii=False, indent=2)}\n\n"
-            "Return a list of strings, where each string corresponds to a row."
+            "Output in JSON"
         )
         try:
             resp: SerializedRows = await self.llm.aget_structured_response(
