@@ -54,9 +54,6 @@ class LLMService:
                 proxy=OLLAMA_BASE_URL
             )
 
-            # The OpenAI client is configured to point to the local Ollama v1 API
-            # endpoint. `instructor.patch` enhances this client to handle
-            # Pydantic response models automatically.
             self.client: OpenAI = instructor.patch(
                 OpenAI(
                     base_url=f"{OLLAMA_BASE_URL}/v1",
@@ -106,69 +103,6 @@ class LLMService:
                 truncated_tokens, skip_special_tokens=True
             )
         return text
-
-    def get_structured_response(
-        self,
-        prompt: str,
-        model_name: str,
-        response_model: Type[PydanticModel],
-    ) -> PydanticModel:
-        """
-        Sends a prompt to the specified LLM and returns a structured response
-        validated against a Pydantic model.
-
-        This method first truncates the prompt to stay within the token limit,
-        then calls the LLM. The `instructor` library handles the validation,
-        ensuring the LLM's JSON output matches the `response_model` schema.
-
-        Args:
-            prompt: The user-provided prompt for the LLM.
-            model_name: The name of the Ollama model to use (e.g.,
-                        'mistralai/Mistral-Small-3.2-24B-Instruct-2506').
-            response_model: The Pydantic class that defines the desired
-                            structure of the LLM's response.
-
-        Returns:
-            An instance of the `response_model` populated with data from the
-            LLM's response.
-
-        Raises:
-            OpenAIError: If the API call to Ollama fails for any reason
-                         (e.g., connection error, model not found).
-            Exception: For any other unexpected errors during processing.
-        """
-        logger.debug(f"Requesting structured response using model '{model_name}'.")
-        
-        
-        # Ensure the prompt does not exceed the maximum token limit.
-        truncated_prompt = self._truncate_text(prompt)
-        logger.info(f"Sending following prompt :{truncated_prompt}")
-
-        try:
-            response = self.client.chat.completions.create(
-                model=model_name,
-                messages=[
-                    {
-                        "role": "user",
-                        "content": truncated_prompt,
-                    }
-                ],
-                response_model=response_model,
-            )
-            logger.debug(f"Successfully received and validated structured response.")
-            return response
-        except OpenAIError as e:
-            logger.error(
-                f"API call to model '{model_name}' failed: {e}", exc_info=True
-            )
-            # Propagate the error to the caller (main.py) for state handling.
-            raise
-        except Exception as e:
-            logger.error(
-                f"An unexpected error occurred while getting a structured response: {e}",
-                exc_info=True,
-            )
-            raise
 
     async def aget_structured_response(self,
         prompt: str,

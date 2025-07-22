@@ -54,7 +54,7 @@ async def main(input_folder: Path, output_folder: Path):
         logger.error(f"❌ CRITICAL: {e}")
         logger.error("Please start the unoserver instance and try again. Exiting.")
         sys.exit(1)
-    files_to_process = Path("/home/grand/alstom_finetuning/data/SSPHA projets").rglob("*")
+    files_to_process = Path("/home/grand/alstom_finetuning/data/data_to_test_on").rglob("*")
     excel_files = [file_path for file_path in files_to_process if file_path.suffix in [".xlsx"]]
     word_files = [file_path for file_path in files_to_process if file_path.suffix in [".docx", ".doc"]]
 
@@ -69,12 +69,11 @@ async def main(input_folder: Path, output_folder: Path):
         result = word_processor.process(file_path)
         word_results.append(result)
     
-    excel_tasks = [[excel_processor.process(file_path) for file_path in excel_files][0]]
+    excel_tasks = [excel_processor.process(file_path) for file_path in excel_files if "Liste_" in file_path.name]
     excel_results = await tqdm_asyncio.gather(*excel_tasks)
 
     logger.info(config["qdrant"]["distance_metric"])
     database = QdrantService(db_path=config["paths"]["qdrant_db_path"], 
-                             collection_name=config["qdrant"]["collection_name"], 
                              vector_size=config["qdrant"]["vector_size"],
                              distance_metric=config["qdrant"]["distance_metric"],
                              embedding_model_path=config["paths"]["embedding_model_dir"])

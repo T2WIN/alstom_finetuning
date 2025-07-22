@@ -1,12 +1,9 @@
-# Update src/services/docling_service.py
-
 import logging
 from pathlib import Path
 from docling.document_converter import DocumentConverter, PdfFormatOption
 from docling.datamodel.base_models import InputFormat
 from docling.datamodel.pipeline_options import PdfPipelineOptions
 from utils.config_loader import ConfigLoader
-from data_models import HierarchicalNode
 
 # Configure logging
 logger = logging.getLogger(__name__)

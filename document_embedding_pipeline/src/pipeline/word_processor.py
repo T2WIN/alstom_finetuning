@@ -54,32 +54,10 @@ class WordProcessor(BaseProcessor):
     def _extract_title_and_structure(self, markdown_content: str) -> tuple[str, HierarchicalNode]:
         """Extract title and structure from markdown content."""
         token_count = self._count_tokens(markdown_content)
-        
-        if token_count <= self.small_doc_threshold:
-            # Single LLM call for small documents
-            logger.info(prompts.WORD_TITLE_STRUCTURE_EXTRACTION_PROMPT.format(markdown_content=markdown_content))
-            response = self.llm_service.get_structured_response(
-                prompt=prompts.WORD_TITLE_STRUCTURE_EXTRACTION_PROMPT.format(
-                    markdown_content=markdown_content
-                ),
-                model_name=self.title_structure_model,
-                response_model=WordDocumentStructure
-            )
-            # For small docs, the root node contains the title
-            title = response.title
-            structure = response
-        else:
-            # Large document: separate title and structure extraction
-            title = self.llm_service.get_structured_response(
-                prompt=prompts.WORD_TITLE_ONLY_PROMPT.format(
-                    markdown_content=markdown_content[:5000]  # First page content
-                ),
-                model_name=self.title_only_model,
-                response_model=str
-            )
+
             
-            # Use Docling for structure extraction
-            structure = self.docling_service.extract_structure(markdown_content)
+        # Use Docling for structure extraction
+        structure = self.docling_service.extract_structure(markdown_content)
         
         return title, structure
 
