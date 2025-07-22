@@ -1,4 +1,4 @@
-from typing import List, Optional, Union, Literal, Annotated
+from typing import List, Optional, Union, Literal, Annotated, Dict
 import abc
 from pydantic import BaseModel, Field
 from pathlib import Path
@@ -44,8 +44,9 @@ class Column(BaseModel):
 class TableSheet(BaseSheet):
     sheet_name : str
     sheet_type: Literal["table"] = "table"
-    table_schema : List[Column]
+    table_headers : List[str]
     table_summary : str
+    serialized_rows: List[Dict]
 
 Sheet = Annotated[
     Union[ContentSheet, TableSheet],
@@ -57,7 +58,7 @@ class Header(BaseModel):
     description : str = Field(..., description="A text description of the header infered on the content of rows")
 
 class Headers(BaseModel):
-    headers : List[Header] = Field(..., description="A list of clean headers")
+    headers : List[Header] = Field(..., description="A list of clean individual headers")
 
 class Summary(BaseModel):
     summary : str = Field(..., description="A summary of the table")
@@ -72,6 +73,9 @@ class ExcelDocumentPayload(BaseModel):
     title:str
     file_path: str
     sheets: List[Sheet]
+
+class Title(BaseModel):
+    title: Optional[str] = None
 
 class HierarchicalNode(BaseModel):
     """A recursive model for deeply nested documents, representing a node in a tree."""
