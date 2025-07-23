@@ -14,6 +14,7 @@ from openpyxl.cell.cell import MergedCell
 from openpyxl.utils import get_column_letter
 
 from services.llm_service import LLMService
+from services.unoserver_service import convert_document
 from utils.logging_setup import setup_logging
 from pipeline.base_processor import BaseProcessor
 from data_models import Headers, Summary, SerializedRows, ExcelDocumentPayload, Header, Title, TableSheet, ContentSheet
@@ -49,6 +50,11 @@ class ExcelProcessor(BaseProcessor):
         and detailed cell info from ExcelParser.
         """
         logger.info("Starting Excel processing: %s", file_path.name)
+
+        if file_path.suffix == ".xls":
+            out_file = file_path.with_suffix(".xlsx")
+            convert_document(file_path, out_file, "xlsx")
+            file_path = out_file
 
         workbook = load_workbook(file_path, data_only=True)
         try:

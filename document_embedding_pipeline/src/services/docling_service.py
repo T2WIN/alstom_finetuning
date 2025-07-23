@@ -23,7 +23,7 @@ class DoclingService:
             }
         )    
         
-    def convert_pdf_to_markdown(self, pdf_path: Path, markdown_path: Path) -> None:
+    def convert_doc_to_markdown(self, file_path: Path) -> None:
         """
         Converts a PDF file to a Markdown file, ignoring headers and footers.
 
@@ -35,17 +35,12 @@ class DoclingService:
             Exception: If the conversion fails for any reason.
         """
         try:
-            logger.info(f"Starting PDF to Markdown conversion for: {pdf_path}")
-            doc = self.converter.convert(pdf_path).document
+            logger.info(f"Starting Markdown conversion for: {file_path.name}")
+            doc = self.converter.convert(file_path).document
             markdown_content = doc.export_to_markdown()
-
-            # Save the markdown content to the specified file
-            with open(markdown_path, "w", encoding="utf-8") as f:
-                f.write(markdown_content)
-            
-            logger.info(f"Successfully converted PDF to Markdown: {markdown_path}")
+            return markdown_content
 
         except Exception as e:
-            logger.error(f"Failed to convert PDF '{pdf_path}' to Markdown. Reason: {e}", exc_info=True)
+            logger.error(f"Failed to convert '{file_path.name}' to Markdown. Reason: {e}", exc_info=True)
             # The exception is allowed to propagate up to be handled by the main orchestrator.
             raise

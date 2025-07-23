@@ -150,6 +150,7 @@ This guide outlines how to set up `unoserver` to work with your Python virtual e
         ```bash
         sudo apt update
         sudo apt install libreoffice
+        sudo apt install libreoffice-calc
         ```
     * **macOS (using Homebrew):**
         ```bash

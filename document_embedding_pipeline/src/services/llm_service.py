@@ -124,7 +124,7 @@ class LLMService:
                 response_model=response_model,   # or however your wrapper spells it
                 **kwargs,
             )
-            logger.debug(f"Successfully received and validated structured response.")
+            logger.info(f"Successfully received and validated structured response : {response}")
             return response
         except OpenAIError as e:
             logger.error(
@@ -138,3 +138,5 @@ class LLMService:
                 exc_info=True,
             )
             raise
+
+

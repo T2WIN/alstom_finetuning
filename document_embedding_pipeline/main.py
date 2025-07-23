@@ -3,7 +3,7 @@ import logging
 import sys
 from pathlib import Path
 import asyncio
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 import yaml
 from tqdm.asyncio import tqdm_asyncio
@@ -12,11 +12,24 @@ from tqdm import tqdm
 # Import custom modules from the project structure
 from pipeline.excel_processor import ExcelProcessor
 from pipeline.word_processor import WordProcessor
-from services.qdrant_service import QdrantService
+# from services.qdrant_service import QdrantService
 from utils.logging_setup import setup_logging
 
 # Set up a logger for the main orchestrator
 logger = logging.getLogger(__name__)
+
+def filter_files_that_have_already_been_converted(file_list: List[Path]) -> List[Path]:
+    filtered_files = []
+    for file in file_list:
+        out_file_excel = file.with_suffix(".xlsx")
+        out_file_word = file.with_suffix(".docx")
+        if file.suffix == ".xls" and out_file_excel.exists():
+            continue
+        if file.suffix == ".doc" and out_file_word.exists():
+            continue
+        filtered_files.append(file)
+
+    return filtered_files
 
 async def main(input_folder: Path, output_folder: Path):
     """
@@ -54,31 +67,29 @@ async def main(input_folder: Path, output_folder: Path):
         logger.error(f"❌ CRITICAL: {e}")
         logger.error("Please start the unoserver instance and try again. Exiting.")
         sys.exit(1)
-    files_to_process = Path("/home/grand/alstom_finetuning/data/data_to_test_on").rglob("*")
-    excel_files = [file_path for file_path in files_to_process if file_path.suffix in [".xlsx"]]
+    files_to_process = list(Path("/home/grand/alstom_finetuning/data/data_to_test_on").rglob("*"))
+
+    excel_files = [file_path for file_path in files_to_process if file_path.suffix in [".xlsx", ".xls"]]
+    excel_files = filter_files_that_have_already_been_converted(excel_files)
+
     word_files = [file_path for file_path in files_to_process if file_path.suffix in [".docx", ".doc"]]
+    word_files = filter_files_that_have_already_been_converted(word_files)
 
-    progress_bar_word = tqdm(word_files, desc="Processing Word Documents", unit="file")
-
-    word_processor = WordProcessor(temp_folder=config["paths"]["temp_dir_name"])
+    word_processor = WordProcessor(temp_folder=Path(config["paths"]["temp_dir_name"]))
     excel_processor = ExcelProcessor(temp_folder=config["paths"]["temp_dir_name"])
-
-    word_results = []
-    for file_path in progress_bar_word:
-        progress_bar_word.set_postfix_str(file_path.name)
-        result = word_processor.process(file_path)
-        word_results.append(result)
     
-    excel_tasks = [excel_processor.process(file_path) for file_path in excel_files if "Liste_" in file_path.name]
-    excel_results = await tqdm_asyncio.gather(*excel_tasks)
+    # excel_tasks = [excel_processor.process(file_path) for file_path in excel_files if "Liste_" in file_path.name]
+    # excel_tasks = [excel_processor.process(file_path) for file_path in excel_files][:2]
+    # excel_results = await tqdm_asyncio.gather(*excel_tasks)
 
-    logger.info(config["qdrant"]["distance_metric"])
-    database = QdrantService(db_path=config["paths"]["qdrant_db_path"], 
-                             vector_size=config["qdrant"]["vector_size"],
-                             distance_metric=config["qdrant"]["distance_metric"],
-                             embedding_model_path=config["paths"]["embedding_model_dir"])
-    for excel_doc in excel_results:
-        database.upsert_excel_document(excel_doc)
+    word_tasks = [word_processor.process(file_path) for file_path in word_files if "Plan" in file_path.name]
+    word_results = await tqdm_asyncio.gather(*word_tasks)
+    # database = QdrantService(db_path=config["paths"]["qdrant_db_path"], 
+    #                          vector_size=config["qdrant"]["vector_size"],
+    #                          distance_metric=config["qdrant"]["distance_metric"],
+    #                          embedding_model_path=config["paths"]["embedding_model_dir"])
+    # for excel_doc in excel_results:
+    #     database.upsert_excel_document(excel_doc)
 
 
     
