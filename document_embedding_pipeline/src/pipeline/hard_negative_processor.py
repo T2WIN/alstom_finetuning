@@ -83,8 +83,9 @@ class HardNegativeProcessor(BaseProcessor):
         print("Computing embeddings for all queries and answers...")
         queries = df['query'].tolist()
         answers = df['answer'].tolist()
+        answer_embeddings = self.embedding_model.encode(answers, convert_to_tensor=True, device=self.device, show_progress_bar=True, batch_size=1)
         query_embeddings = self.embedding_model.encode(queries, convert_to_tensor=True, device=self.device, show_progress_bar=True)
-        answer_embeddings = self.embedding_model.encode(answers, convert_to_tensor=True, device=self.device, show_progress_bar=True)
+        
         print("Embeddings computed.")
 
         # 3. Initial Similarity Filtering

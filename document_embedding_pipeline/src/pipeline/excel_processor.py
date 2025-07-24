@@ -17,7 +17,7 @@ from services.llm_service import LLMService
 from services.unoserver_service import convert_document
 from utils.logging_setup import setup_logging
 from pipeline.base_processor import BaseProcessor
-from data_models import Headers, Summary, SerializedRows, ExcelDocumentPayload, Header, Title, TableSheet, ContentSheet
+from data_models import Headers, TableSummary, SerializedRows, ExcelDocumentPayload, Header, Title, TableSheet, ContentSheet
 from utils.table_parsing import ParsedTableSheet, ParsedContentSheet, ParsedSheetFactory
 
 logger = logging.getLogger(__name__)

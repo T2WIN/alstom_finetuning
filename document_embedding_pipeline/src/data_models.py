@@ -42,8 +42,11 @@ class Header(BaseModel):
 class Headers(BaseModel):
     headers : List[Header] = Field(..., description="A list of clean individual headers")
 
-class Summary(BaseModel):
+class TableSummary(BaseModel):
     summary : str = Field(..., description="A summary of the table")
+
+class WordDocumentSummary(BaseModel):
+    summary : str = Field(..., description="A summary of the whole document")
 
 class SerializedRows(BaseModel):
     rows : List[str] = Field(..., description="List of serialized rows as sentences")
@@ -59,7 +62,6 @@ class ExcelDocumentPayload(BaseModel):
 class Title(BaseModel):
     title: Optional[str] = None
 
-
 class Section(BaseModel):
     """
     A model to represent a section of a document, which can contain nested subsections.
@@ -72,3 +74,13 @@ Section.model_rebuild()
 
 class WordDocumentStructure(BaseModel):
     structure : List['Section'] = Field(description="The hierarchical structure of the document")
+
+
+class WordDocumentPayload(BaseModel):
+    """
+    Represents the payload for a Word document.
+    """
+    file_path: str
+    title: str
+    global_summary: str
+    sections: List[Section]

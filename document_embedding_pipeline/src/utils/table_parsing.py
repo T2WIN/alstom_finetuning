@@ -1,7 +1,7 @@
 import dataclasses
 from typing import List, Optional, Dict, Any
 from openpyxl.worksheet.worksheet import Worksheet 
-from data_models import Summary, Title
+from data_models import TableSummary, Title
 from services.llm_service import LLMService
 import logging
 import json
@@ -372,8 +372,8 @@ class ParsedTableSheet:
                 f"Headers: {table.headers}\n"
                 f"Sample rows: {json.dumps(sample, ensure_ascii=False, indent=2)}"
             ) 
-        resp: Summary = await llm.aget_structured_response(
-            prompt, max_tokens=512, response_model=Summary
+        resp: TableSummary = await llm.aget_structured_response(
+            prompt, max_tokens=512, response_model=TableSummary
         )
         return resp.summary
     

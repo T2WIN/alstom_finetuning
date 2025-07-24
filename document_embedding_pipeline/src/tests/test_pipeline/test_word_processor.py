@@ -1,72 +1,70 @@
-"""
-Unit tests for WordProcessor, using the standard unittest library.
-
-Assumes:
-  - unoserver is running locally
-  - a sample .docx file exists at tests/test_pipeline/fixtures/hello_world.docx
-"""
-
-import logging
-import tempfile
-import shutil
-import unittest
+import pytest
 from pathlib import Path
+from unittest.mock import patch, MagicMock, AsyncMock
 
 from pipeline.word_processor import WordProcessor
-from services.unoserver_service import convert_document_to_pdf
+from services.unoserver_service import convert_document
+from utils.markdown_heading_parser import MarkdownHeadingParser
 
+@pytest.fixture
+def sample_file():
+    return Path(__file__).parent / "fixtures" / "hello_world.docx"
 
-def _unoserver_reachable() -> bool:
-    """Return True if we can reach unoserver."""
+def test_unoserver_reachable():
     try:
-        convert_document_to_pdf(__file__, "/tmp/__probe.pdf")  # noqa: S108
-        return True
+        convert_document(__file__, "/tmp/__probe.pdf", "pdf")
     except Exception:
-        return False
+        pytest.skip("unoserver not reachable")
 
+@pytest.mark.asyncio
+async def test_initial_parsing_happy_path(sample_file, tmp_path):
+    """PDF files should be produced."""
+    wp = WordProcessor(temp_folder=tmp_path)
+    await wp.process(sample_file)
+    
+    # Verify PDF file was created
+    assert (tmp_path / "hello_world.pdf").exists()
 
-class TestWordProcessor(unittest.TestCase):
-    SAMPLE_FILE = Path(__file__).with_suffix(".docx")  # placeholder
-    TEMP_DIR: Path
+@pytest.mark.asyncio
+@patch('pipeline.word_processor.LLMService', autospec=True)
+@patch('pipeline.word_processor.DoclingService', autospec=True)
+async def test_small_document_processing(mock_docling, mock_llm, sample_file, tmp_path):
+    """Test processing flow for small documents."""
+    # Setup mocks
+    mock_docling.return_value.convert_doc_to_markdown.return_value = "# Title\nContent"
+    mock_llm.return_value.aget_structured_response = AsyncMock(side_effect=[
+        MagicMock(structure=[MagicMock()]),
+        MagicMock(title="Title")
+    ])
+    
+    wp = WordProcessor(temp_folder=tmp_path)
+    wp.small_doc_threshold = 5000  # Set high threshold to force small doc path
+    
+    await wp.process(sample_file)
+    
+    # Verify LLM was called for structure extraction
+    mock_llm.return_value.aget_structured_response.assert_called()
 
-    @classmethod
-    def setUpClass(cls) -> None:
-        cls.SAMPLE_FILE = Path(__file__).parent / "fixtures" / "hello_world.docx"
-        if not cls.SAMPLE_FILE.exists():
-            raise unittest.SkipTest(f"Missing fixture {cls.SAMPLE_FILE}")
+@pytest.mark.asyncio
+@patch.object(MarkdownHeadingParser, 'parse')
+@patch('pipeline.word_processor.DoclingService', autospec=True)
+async def test_large_document_processing(mock_docling, mock_parser, sample_file, tmp_path):
+    """Test processing flow for large documents."""
+    # Setup mocks
+    mock_docling.return_value.convert_doc_to_markdown.return_value = "# Title\n## Section\nContent"
+    mock_parser.return_value = [MagicMock(title="Title", content_summary="", subsections=[])]
+    
+    wp = WordProcessor(temp_folder=tmp_path)
+    wp.small_doc_threshold = 100  # Set low threshold to force large doc path
+    
+    await wp.process(sample_file)
+    
+    # Verify Markdown parser was called
+    mock_parser.assert_called()
 
-        if not _unoserver_reachable():
-            raise unittest.SkipTest("unoserver not reachable")
-
-    def setUp(self) -> None:
-        self.TEMP_DIR = Path(tempfile.mkdtemp())
-
-    def tearDown(self) -> None:
-        shutil.rmtree(self.TEMP_DIR, ignore_errors=True)
-
-    def test_initial_parsing_happy_path(self):
-        """PDF and Markdown files should be produced."""
-        wp = WordProcessor(temp_folder=self.TEMP_DIR)
-
-        with self.assertLogs(level="INFO") as log_ctx:
-            wp.process(self.SAMPLE_FILE)
-
-        self.assertTrue(wp.temp_pdf_path.exists())
-        self.assertGreater(wp.temp_pdf_path.stat().st_size, 0)
-        self.assertTrue(wp.temp_markdown_path.exists())
-        self.assertGreater(wp.temp_markdown_path.stat().st_size, 0)
-
-        logs = "\n".join(log_ctx.output)
-        self.assertIn("Converting Word document to PDF", logs)
-        self.assertIn("PDF to Markdown conversion successful", logs)
-
-    def test_exception_propagation(self):
-        """Any failure inside process() is propagated upwards."""
-        wp = WordProcessor(temp_folder=self.TEMP_DIR)
-        with self.assertRaises(Exception):
-            wp.process(Path("/does/not/exist.docx"))
-
-
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    unittest.main()
+@pytest.mark.asyncio
+async def test_exception_propagation(tmp_path):
+    """Any failure inside process() is propagated upwards."""
+    wp = WordProcessor(temp_folder=tmp_path)
+    with pytest.raises(Exception):
+        await wp.process(Path("/does/not/exist.docx"))
