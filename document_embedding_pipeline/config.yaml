@@ -31,6 +31,7 @@ llm:
     excel_model: "mistralai/Mistral-Small-3.2-24B-Instruct-2506"
   # The tokenizer used for calculating token counts to differentiate document sizes.
   tokenizer_model: "unsloth/Mistral-Small-3.2-24B-Instruct-2506"
+  tokenizer_model: "unsloth/Mistral-Small-3.2-24B-Instruct-2506"
   # Global token limit for any input sent to an LLM.
   max_input_tokens: 10000
 
@@ -49,11 +50,11 @@ processing_params:
     # Token count threshold to distinguish between 'small' and 'large' documents.
     small_doc_threshold_tokens: 5000
     # Model assignments for Word processing
-    title_structure_model: "/home/grand/llm/Qwen3-14B-Q5/snapshots/a04a82c4739b3ef5fa6da7d10261db2c67dd1985/Qwen3-14B-Q5_K_M.gguf"
-    title_only_model: "/home/grand/llm/Qwen3-14B-Q5/snapshots/a04a82c4739b3ef5fa6da7d10261db2c67dd1985/Qwen3-14B-Q5_K_M.gguf"
-    section_summary_model: "/home/grand/llm/Qwen3-14B-Q5/snapshots/a04a82c4739b3ef5fa6da7d10261db2c67dd1985/Qwen3-14B-Q5_K_M.gguf"
-    table_summary_model: "/home/grand/llm/Qwen3-14B-Q5/snapshots/a04a82c4739b3ef5fa6da7d10261db2c67dd1985/Qwen3-14B-Q5_K_M.gguf"
-    global_summary_model: "/home/grand/llm/Qwen3-14B-Q5/snapshots/a04a82c4739b3ef5fa6da7d10261db2c67dd1985/Qwen3-14B-Q5_K_M.gguf"
+    title_structure_model: "qwen3:4b"
+    title_only_model: "qwen3:4b"
+    section_summary_model: "qwen3:4b"
+    table_summary_model: "qwen3:4b"
+    global_summary_model: "qwen3:4b"
   # Excel document specific parameters.
   excel:
     # A sheet is considered empty if its empty cell ratio exceeds this value.

@@ -185,9 +185,9 @@ This pipeline handles Excel (`.xlsx`, `.xls`) files.
 #### **3.1. Parsing and Metadata Extraction**
 
 
-1.  **Sheet Identification:** For each sheet, determine if it contains meaningful content. A sheet is considered empty if **more than 80% of its cells are empty**. This threshold is **hardcoded but can be moved to a configuration file later**.
+1.  **Sheet Identification:** For each sheet, determine if it contains meaningful content. A sheet is considered empty if **more than 80% of its cells are empty**. This threshold should be included within the config file.
 
-2.  **Title Extraction:** Use `ibm-granite/granite-3.3-8b-instruct` on the text content of the first sheet to extract the document title.
+2.  **Title Extraction:** Use `ibm-granite/granite-3.3-8b-instruct` on the text content (first 500 tokens) of all content sheets to extract the document title. Also give the filepath to the llm as additionnal context. 
 
 3.  **Content Classification:** For each meaningful sheet, pass its content (as a CSV-formatted string) to `mistralai/Mistral-Small-3.2-24B-Instruct-2506` to classify it as either a **"table sheet"** or a **"content sheet"**. Or compare the number of commas to the number of words in the csv. Since content sheets have merged cells and specific formatting (that means lots of empty cells), there will be a lot more commas than words.
 

@@ -155,11 +155,13 @@ class QuestionGenerator:
                     configs=configs
                 )
                 generated_query: QuerySet = await self.structured_output_llm_async(question_gen_prompt, QuerySet, client_config)
+                generated_query: QuerySet = await self.structured_output_llm_async(question_gen_prompt, QuerySet, client_config)
                 llm2_duration = time.time() - llm2_start_time
                 logger.info(f"METRIC: LLM call 2 (Question) for doc {doc_id} took {llm2_duration:.4f}s using {client_config.name}")
                 
                 # --- Vector Store Save ---
                 save_start_time = time.time()
+                self.save_query_set_to_vector_store(generated_query, document)
                 self.save_query_set_to_vector_store(generated_query, document)
                 save_duration = time.time() - save_start_time
                 logger.info(f"METRIC: Vector store save for doc {doc_id} took {save_duration:.4f}s")

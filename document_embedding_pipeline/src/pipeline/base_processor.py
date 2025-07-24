@@ -8,5 +8,5 @@ class BaseProcessor(ABC):
         pass
     
     @abstractmethod
-    def process(self, file_path: Path):
+    async def process(self, file_path: Path):
         pass
