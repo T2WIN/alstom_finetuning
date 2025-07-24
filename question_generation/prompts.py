@@ -1,7 +1,5 @@
 CONFIG_GEN_PROMPT = """
-Given a passage and a character description, select the appropriate option from two fields : Query type, Query Format.
-
-First, select the query type that the character might ask about the passage. Then, choose the format of the possible query based on the passage, the character and the query type.
+Given a passage and a character description, select the appropriate options from two fields : Query type, Query Format.
 
 Query types :
 - Fact Retrieval (Explicit facts directly from a knowledge base)
@@ -15,8 +13,10 @@ Query format :
 - keywords
 - formal question
 
-Now, generate the output based on the passage and character. Ensure to generate only JSON.
+Example pair :
+(Fact Retrieval, keywords)
 
+Generate a set of 3 distinct query type and query format pairs based on the passage and character. Ensure to generate only JSON.
 Passage :
 {passage}
 
@@ -63,8 +63,9 @@ safety, and compliance with maintenance plans and regulations. Their daily work 
 and adheres strictly to safety protocols within the depot environment.
 """
 
-QUESTION_GEN_PROMPT = """
-Given a character description, a passage and requirements, generate a query from the character's perspective that satifies the requirements and can be used to retrieve the passage. Assume you are the character. 
+QUERY_GEN_PROMPT = """
+Given a character description, a passage and a set of config options, generate a set of queries from the character's perspective where each query satisfies one of the config pairs and can be used to retrieve the passage. Assume you are the character. 
+Make sure all config pairs are used at least once. Keyword queries must have 6 keywords maximum.
 Do not repeat what character you are. The query must be relevant to the passage.
 Return the result in JSON format.
 
@@ -74,7 +75,6 @@ Character :
 Passage : 
 {passage}
 
-Requirement :
-- Type of query : {type}
-- Format of the query : {difficulty}
+Config pairs:
+{configs}
 """

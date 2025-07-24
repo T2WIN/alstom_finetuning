@@ -1,12 +1,15 @@
 
 from pydantic import BaseModel, Field
+from typing import List
 from enum import Enum
 
-class Query(BaseModel):
-    query: str = Field(
+class QuerySet(BaseModel):
+    queries: list[str] = Field(
         ...,
-        description="A query for retrieving the passage"
+        description="A list of queries for retrieving the passage"
     )
+
+
 
 class QueryType(str, Enum):
     FACT_RETRIEVAL = "Fact Retrieval"
@@ -21,5 +24,8 @@ class QueryFormat(str, Enum):
     FORMAL_QUESTION = "formal question"
 
 class CharacterQuestionAnalysis(BaseModel):
-    query_type: QueryType
-    query_format: QueryFormat
+    query_type: QueryType = Field(..., description="The type of query to ask")
+    query_format: QueryFormat = Field(..., description="The format of the query, keyword or formal")
+
+class ConfigSet(BaseModel):
+    configs : List[CharacterQuestionAnalysis]

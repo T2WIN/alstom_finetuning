@@ -70,7 +70,7 @@ def export_nodes_to_csv():
                     'text': node.get_content(),
                     # Use .get() to safely access metadata keys that might be missing
                     'file_name': node.metadata.get('file_name', 'N/A'),
-                    'generated_query': node.metadata.get('generated_query', 'N/A')
+                    'generated_query': node.metadata.get('generated_queries', 'N/A')
                 })
         
         # Get the full path for the final message
