@@ -5,10 +5,10 @@ This file provides a high-level overview of the project and the expected product
 2025-07-24 08:51:53 - Log of updates made
 
 ## Project Goal
-Build a document embedding pipeline that processes Word and Excel documents, extracts structured information, and stores it in a vector database for efficient retrieval and question-answering.
+Build a document embedding pipeline that processes Word, Excel, PowerPoint and PDF documents, extracts structured information, and stores it in a vector database for efficient retrieval and question-answering.
 
 ## Key Features
-- Conversion of Word/Excel documents to Markdown and structured formats
+- Conversion of Word, Excel, PowerPoint and PDF to Markdown and structured formats
 - LLM-powered extraction of document structure, titles, and summaries
 - Storage of document embeddings in Qdrant vector database
 - Hard negative mining for training embedding models

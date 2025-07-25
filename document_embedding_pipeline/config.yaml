@@ -20,7 +20,7 @@ paths:
 # --- LLM and Tokenizer Configuration ---
 llm:
   # The base URL for the local Ollama server.
-  ollama_base_url: "http://127.0.0.1:9292"
+  ollama_base_url: "http://127.0.0.1:11434"
   # Specific model assignments for different tasks to ensure the correct model is used.
   tokenizer_model: "unsloth/Mistral-Small-3.2-24B-Instruct-2506"
   # Global token limit for any input sent to an LLM.
@@ -41,9 +41,9 @@ processing_params:
     # Token count threshold to distinguish between 'small' and 'large' documents.
     small_doc_threshold_tokens: 5000
     # Model assignments for Word processing
-    title_model : "granite_q4"
-    structure_model : "mistral-s"
-    summary_model : "granite-8b-q6"
+    title_model : "qwen3:4b"
+    structure_model : "qwen3:4b"
+    summary_model : "qwen3:4b"
   # Excel document specific parameters.
   excel:
     # For large tables, only the first N rows are sent to the LLM for analysis.
@@ -55,3 +55,18 @@ services:
   unoserver:
     host: "localhost"
     port: 2002
+# --- Logging Configuration ---
+logging:
+  global_level: "INFO"
+  components:
+    pipeline: "ERROR"               # All pipeline processors
+    main: "INFO"            # Specific module (keep existing)
+    pipeline_word_processor: "DEBUG" # Specific processor
+    pipeline_excel_processor: "INFO"
+    services: "INFO"                # All services
+    services_llm_service: "INFO"    # Specific service
+    services_docling_service: "INFO" # Keep existing
+    services_unoserver_service: "INFO" # Keep existing
+    services_qdrant_service: "ERROR"
+    utils: "DEBUG"                  # Utility modules
+    utils.state_manager: "DEBUG"

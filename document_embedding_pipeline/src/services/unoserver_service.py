@@ -1,8 +1,8 @@
 from pathlib import Path
 import subprocess
-import logging
+from utils.logging_setup import get_component_logger
 
-logger = logging.getLogger(__name__)
+logger = get_component_logger(__name__)
 
 def convert_document(input_path: Path, output_path: Path, file_type: str):
     """Converts a document to a specified format using unoconverter."""

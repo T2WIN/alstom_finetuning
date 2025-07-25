@@ -5,10 +5,11 @@ from typing import Union
 from data_models import WordDocumentPayload, ExcelDocumentPayload
 from qdrant_client import QdrantClient, models
 from sentence_transformers import SentenceTransformer
+from utils.config_loader import ConfigLoader
+from utils.logging_setup import get_component_logger
 import uuid
 
-logger = logging.getLogger(__name__)
-
+logger = get_component_logger(__name__)
 
 class QdrantService:
     """
@@ -16,25 +17,34 @@ class QdrantService:
     """
     uuid_namespace = uuid.UUID("5e964fc6-ed86-4d74-b010-67ae37583070")
 
-    def __init__(self, db_path: str, vector_size: int, distance_metric: str, embedding_model_path: str):
+    def __init__(self):
         """
-        Initializes the QdrantService. Loads the embedding model in memory.
-
-        Args:
-            db_path (str): The path to the Qdrant database file.
-            vector_size (int): The size of the vectors.
-            distance_metric (str): The distance metric to use.
-            embedding_model_path (str): The path to the embedding model folder.
+        Initializes the QdrantService with configuration from config.yaml.
+        
+        Raises:
+            RuntimeError: If required configuration sections are missing
         """
-        self.client = QdrantClient(path=db_path)
-        self.docs_collection_name = "documents"
-        self.rows_collection_name = "document_rows"
-        self.vector_size = vector_size
-        self.distance_metric = distance_metric
-        self.embedding_model = SentenceTransformer(embedding_model_path)
-        self._create_collections_if_not_exist()
+        try:
+            # Load required configuration with error handling
+            self.db_path: str = ConfigLoader.get('paths.qdrant_db_path')
+            self.vector_size: int = ConfigLoader.get('qdrant.vector_size')
+            self.distance_metric: str = ConfigLoader.get('qdrant.distance_metric')
+            self.embedding_model_path: str = ConfigLoader.get('paths.embedding_model_dir')
+            
+            self.client = QdrantClient(path=self.db_path)
+            self.docs_collection_name = "documents"
+            self.rows_collection_name = "document_rows"
+            self.embedding_model = SentenceTransformer(self.embedding_model_path)
+            self._create_collections_if_not_exist()
+            logger.info("QdrantService initialized successfully")
+        except KeyError as e:
+            logger.error(f"Missing required configuration: {e}")
+            raise RuntimeError(f"Configuration error: {e}") from e
+        except Exception as e:
+            logger.error(f"Failed to initialize QdrantService: {e}")
+            raise
     
-    def _generate_unique_id_for_file(self, payload : Union[WordDocumentPayload, ExcelDocumentPayload]):
+    def _generate_unique_id_for_file(self, payload: Union[WordDocumentPayload, ExcelDocumentPayload]) -> str:
         """Generates a unique and deterministic uuid for each file"""
         return str(uuid.uuid5(self.uuid_namespace, str(payload.file_path)))
     
@@ -46,19 +56,19 @@ class QdrantService:
                 vectors_config=models.VectorParams(
                     size=self.vector_size,
                     distance=self.distance_metric,
-                    multivector_config=models.MultiVectorConfig( #Allows us to store multiple vector representations per document (example : one vector per table summary)
-                        comparator=models.MultiVectorComparator.MAX_SIM 
+                    multivector_config=models.MultiVectorConfig(
+                        comparator=models.MultiVectorComparator.MAX_SIM
                     ),
                 ),
             )
             logger.info(f"Created collection: '{self.docs_collection_name}'")
         
-        # The row collection will store a vector per table row (tables are those extracted from excel documents)
+        # The row collection stores vectors for table rows
         if not self.client.collection_exists(collection_name=self.rows_collection_name):
             self.client.create_collection(
                 collection_name=self.rows_collection_name,
                 vectors_config=models.VectorParams(
-                    size=self.vector_size, 
+                    size=self.vector_size,
                     distance=self.distance_metric
                 ),
             )

@@ -9,10 +9,12 @@ from services.unoserver_service import convert_document
 from services.docling_service import DoclingService
 from services.llm_service import LLMService
 from pipeline.base_processor import BaseProcessor
+from utils.logging_setup import get_component_logger
 from data_models import Section, WordDocumentStructure, Title, WordDocumentPayload, WordDocumentSummary
 from utils.config_loader import ConfigLoader
 from utils.markdown_heading_parser import MarkdownHeadingParser
-import prompts
+
+logger = get_component_logger(__name__)
 
 # Custom exceptions
 class LibreOfficeError(Exception):
@@ -30,9 +32,6 @@ class ConversionTimeoutError(Exception):
 class RevisionAcceptanceError(Exception):
     """Failed to accept document revisions"""
     pass
-
-# Configure logging
-logger = logging.getLogger(__name__)
 
 class WordProcessor(BaseProcessor):
     """
@@ -56,6 +55,7 @@ class WordProcessor(BaseProcessor):
         self.title_model = self.config["title_model"]
         self.structure_model = self.config["structure_model"]
         self.summary_model = self.config["summary_model"]
+        logger.debug(self.small_doc_threshold, self.title_model, self.structure_model, self.summary_model)
 
     def _accept_tracked_changes(self, file_path: Path) -> Path:
         """Accept all tracked changes using LibreOffice macro
@@ -81,7 +81,7 @@ class WordProcessor(BaseProcessor):
                 "--outdir",
                 str(self.temp_folder)
             ]
-            logger.info(cmd)
+            logger.debug(cmd)
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
             
             if result.returncode != 0:
@@ -250,7 +250,7 @@ At the core of deep learning are neural networks, which are inspired by the huma
             # Step 5: Create global summary
             section_summaries = self._get_all_section_summaries(structure.structure)
             global_summary : WordDocumentSummary = await self._create_global_summary(title.title, section_summaries)
-            logger.info("Global summary created")
+            logger.info(f"Global summary created: {global_summary.summary}")
 
             # Step 6: Create payload
             payload = WordDocumentPayload(
@@ -259,7 +259,7 @@ At the core of deep learning are neural networks, which are inspired by the huma
                 global_summary=global_summary.summary,
                 sections=structure.structure
             )
-            logger.info(payload.model_dump_json())
+            logger.debug(payload.model_dump_json())
             logger.info(f"Successfully completed processing for: {file_path.name}")
             return payload
 

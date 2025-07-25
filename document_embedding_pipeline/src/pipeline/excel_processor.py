@@ -15,12 +15,12 @@ from openpyxl.utils import get_column_letter
 
 from services.llm_service import LLMService
 from services.unoserver_service import convert_document
-from utils.logging_setup import setup_logging
+from utils.logging_setup import get_component_logger
 from pipeline.base_processor import BaseProcessor
 from data_models import Headers, TableSummary, SerializedRows, ExcelDocumentPayload, Header, Title, TableSheet, ContentSheet
 from utils.table_parsing import ParsedTableSheet, ParsedContentSheet, ParsedSheetFactory
 
-logger = logging.getLogger(__name__)
+logger = get_component_logger(__name__)
 
 class ExcelProcessor(BaseProcessor):
     """
@@ -57,18 +57,19 @@ class ExcelProcessor(BaseProcessor):
             file_path = out_file
 
         workbook = load_workbook(file_path, data_only=True)
+        logger.info("Sucessfully loaded workbook")
         try:
             sheets : List[ParsedContentSheet | ParsedTableSheet]= []
             for sheet_name in workbook.sheetnames:
                 sheet = self.parsed_sheet_factory.create_correct_sheet_object(workbook[sheet_name], sheet_name)
                 sheets.append(sheet)
-
+            logger.info("Created all sheet objects with the correct classification")
             content_sheets = [sheet for sheet in sheets if isinstance(sheet, ParsedContentSheet)]
             for sheet in sheets:       
                 if isinstance(sheet, ParsedTableSheet):
                     logger.info(f"Parsing table sheet {sheet.name}")
                     await sheet.extract_tables(content_sheets, self.llm)
-
+            logger.info("Done extracting tables")
             title = await self.extract_title_from_doc(file_path, content_sheets)
             
             final_document = self.format_data_for_storage(title, file_path, sheets)

@@ -18,3 +18,5 @@ qdrant_db
 *.xslx
 *_db*
 commit_history.txt
+config_alstom.yaml
+*/_temp/*

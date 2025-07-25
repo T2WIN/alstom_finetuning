@@ -38,3 +38,19 @@ Async processing of files
 ## Implementation Details
 - Use of asyncio and async calls to LLM
 - tqdm_gather in the main.py to show a progress bar and have a simple async architecture
+
+
+## Decision
+Updated logging configuration to use module-based component names
+
+## Rationale 
+- Aligns logging with actual module structure of the codebase
+- Allows more granular control of log levels for specific modules
+- Improves debugging and monitoring capabilities
+- Follows standard Python logging best practices
+
+## Implementation Details
+- Modified [`document_embedding_pipeline/config.yaml`](document_embedding_pipeline/config.yaml) to use hierarchical logging configuration
+- Set log levels for pipeline, services, and utils modules
+- Preserved existing service-specific configurations
+- Added comments to explain each configuration option
