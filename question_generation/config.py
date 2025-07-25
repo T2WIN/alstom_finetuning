@@ -11,7 +11,7 @@ DATA_DIR = BASE_DIR / "data/raw"
 LOG_FILE = BASE_DIR / "daily_request_log.json"
 
 # --- Models ---
-EMBEDDING_MODEL = "/home/grand/alstom_finetuning/document_embedding_pipeline/models/qwen3-embed-0.6b"
+EMBEDDING_MODEL = "/home/grand/alstom_finetuning/models/qwen3-embed-0.6b"
 LLM_FOR_PARSING = "mistralai/mistral-small-3.2-24b-instruct"
 
 # --- API Keys ---

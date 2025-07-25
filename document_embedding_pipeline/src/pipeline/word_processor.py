@@ -53,6 +53,9 @@ class WordProcessor(BaseProcessor):
         # Load configuration
         self.config = ConfigLoader.get('processing_params.word')
         self.small_doc_threshold = self.config['small_doc_threshold_tokens']
+        self.title_model = self.config["title_model"]
+        self.structure_model = self.config["structure_model"]
+        self.summary_model = self.config["summary_model"]
 
     def _accept_tracked_changes(self, file_path: Path) -> Path:
         """Accept all tracked changes using LibreOffice macro
@@ -115,7 +118,7 @@ class WordProcessor(BaseProcessor):
             "Output in JSON"
         )
         resp: Title = await self.llm.aget_structured_response(
-            prompt, response_model=Title
+            prompt, response_model=Title, model_name=self.title_model
         )
         return resp
 
@@ -159,7 +162,7 @@ At the core of deep learning are neural networks, which are inspired by the huma
             "Output in JSON"
         )
         resp: List[Section] = await self.llm.aget_structured_response(
-            prompt, response_model=List[Section]
+            prompt, response_model=List[Section], model_name=self.structure_model
         )
         return WordDocumentStructure(structure=resp)
 
@@ -172,7 +175,7 @@ At the core of deep learning are neural networks, which are inspired by the huma
             f"Section summaries:\n{summaries_str}\n\n"
             "Provide a 3-4 sentence summary that captures the main purpose and key points of the document."
         )
-        return await self.llm.aget_structured_response(prompt, response_model=WordDocumentSummary)
+        return await self.llm.aget_structured_response(prompt, response_model=WordDocumentSummary, model_name=self.summary_model)
 
     def _get_all_section_summaries(self, sections: List[Section]) -> List[str]:
         """Flatten the section hierarchy and collect all summaries"""

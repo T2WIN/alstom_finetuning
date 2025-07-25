@@ -82,7 +82,7 @@ async def main(input_folder: Path, output_folder: Path):
     # excel_tasks = [excel_processor.process(file_path) for file_path in excel_files][:2]
     # excel_results = await tqdm_asyncio.gather(*excel_tasks)
 
-    word_tasks = [word_processor.process(file_path) for file_path in word_files if "Plan" in file_path.name]
+    word_tasks = [word_processor.process(file_path) for file_path in word_files]
     word_results = await tqdm_asyncio.gather(*word_tasks)
     # database = QdrantService(db_path=config["paths"]["qdrant_db_path"], 
     #                          vector_size=config["qdrant"]["vector_size"],

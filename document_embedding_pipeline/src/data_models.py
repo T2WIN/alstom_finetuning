@@ -1,8 +1,6 @@
 from typing import List, Optional, Union, Literal, Annotated, Dict
 import abc
 from pydantic import BaseModel, Field
-from pathlib import Path
-
 
 class BaseSheet(BaseModel, abc.ABC):
     """

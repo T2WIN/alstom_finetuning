@@ -20,17 +20,8 @@ paths:
 # --- LLM and Tokenizer Configuration ---
 llm:
   # The base URL for the local Ollama server.
-  ollama_base_url: "http://127.0.0.1:8080"
+  ollama_base_url: "http://127.0.0.1:9292"
   # Specific model assignments for different tasks to ensure the correct model is used.
-  models:
-    # Used for title/structure extraction on small documents and section summaries.
-    primary_model: "mistralai/Mistral-Small-3.2-24B-Instruct-2506"
-    # Used for title extraction on large documents and table summaries.
-    secondary_model: "ibm-granite/granite-3.3-8b-instruct"
-    # Used for Excel content classification, schema generation, and summarization.
-    excel_model: "mistralai/Mistral-Small-3.2-24B-Instruct-2506"
-  # The tokenizer used for calculating token counts to differentiate document sizes.
-  tokenizer_model: "unsloth/Mistral-Small-3.2-24B-Instruct-2506"
   tokenizer_model: "unsloth/Mistral-Small-3.2-24B-Instruct-2506"
   # Global token limit for any input sent to an LLM.
   max_input_tokens: 10000
@@ -50,17 +41,11 @@ processing_params:
     # Token count threshold to distinguish between 'small' and 'large' documents.
     small_doc_threshold_tokens: 5000
     # Model assignments for Word processing
-    title_structure_model: "qwen3:4b"
-    title_only_model: "qwen3:4b"
-    section_summary_model: "qwen3:4b"
-    table_summary_model: "qwen3:4b"
-    global_summary_model: "qwen3:4b"
+    title_model : "granite_q4"
+    structure_model : "mistral-s"
+    summary_model : "granite-8b-q6"
   # Excel document specific parameters.
   excel:
-    # A sheet is considered empty if its empty cell ratio exceeds this value.
-    empty_sheet_threshold: 0.80
-    # Columns with a NaN value ratio higher than this will be dropped.
-    nan_column_threshold: 0.90
     # For large tables, only the first N rows are sent to the LLM for analysis.
     table_truncation_rows: 100
 
